@@ -108,8 +108,10 @@ class Hub implements Scene {
   }
   up(p: Pt) {
     this.holding = false; this.hold = 0;
+    const hadHold = this.hHold;
     if (this.hHold) { this.hHold = false; if (this.hh < 2) { this.hWig = 0.5; this.hHint = 2.5; sfx.boop(); } this.hh = 0; }
-    if (this.pressed >= 0) { const b = this.btns[this.pressed]; this.pressed = -1; if (hit(p, b.r, 10)) { sfx.tap(); fullscreen(); const s = b.d.make(); go(s); say(b.d.name, undefined, true).then(() => { if ((window as any).__cur === s) (s as any).prompt && (s as any).prompt(); }); (window as any).__cur = s; } }
+    if (this.pressed < 0 && !this.parent && !hadHold) this.btns.forEach((b, i) => { if (hit(p, b.r)) this.pressed = i; });
+    if (this.pressed >= 0) { const b = this.btns[this.pressed]; this.pressed = -1; if (hit(p, b.r, 10)) { sfx.tap(); try { fullscreen(); } catch (e) {} const s = b.d.make(); go(s); say(b.d.name, undefined, true).then(() => { if ((window as any).__cur === s) (s as any).prompt && (s as any).prompt(); }); (window as any).__cur = s; } }
   }
 }
 const hub = new Hub();
@@ -117,6 +119,7 @@ setHome(() => hub);
 (window as any).__lr = { go, hub, GAMES, D, cur: () => cur() };
 addEventListener("resize", resize);
 addEventListener("orientationchange", () => setTimeout(resize, 200));
+if ((window as any).visualViewport) (window as any).visualViewport.addEventListener("resize", resize);
 go(hub); resize();
 (document as any).fonts && (document as any).fonts.load("16px PS2P").catch(() => {});
 requestAnimationFrame(loop);

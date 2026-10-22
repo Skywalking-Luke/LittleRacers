@@ -1,13 +1,15 @@
+function lsGet(k: string): string | null { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k: string, v: string) { try { localStorage.setItem(k, v); } catch (e) {} }
 import { V } from "./voice";
 export type Lang = "en" | "bm";
 export const S = {
-  lang: (localStorage.getItem("lrLang") === "bm" ? "bm" : "en") as Lang,
-  mute: localStorage.getItem("lrMute") === "1",
-  music: localStorage.getItem("lrMusic") === "1",
-  rain: localStorage.getItem("lrRain") === "1",
+  lang: (lsGet("lrLang") === "bm" ? "bm" : "en") as Lang,
+  mute: lsGet("lrMute") === "1",
+  music: lsGet("lrMusic") === "1",
+  rain: lsGet("lrRain") === "1",
 };
-export function setLang(l: Lang) { S.lang = l; localStorage.setItem("lrLang", l); }
-export function setMute(m: boolean) { S.mute = m; localStorage.setItem("lrMute", m ? "1" : "0"); if (m) stopVoice(); }
+export function setLang(l: Lang) { S.lang = l; lsSet("lrLang", l); }
+export function setMute(m: boolean) { S.mute = m; lsSet("lrMute", m ? "1" : "0"); if (m) stopVoice(); }
 
 let ac: AudioContext | null = null;
 export function unlock() {
@@ -120,8 +122,8 @@ export function say(key: string, vars?: Record<string, string>, cut = true, rate
 }
 try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } catch (e) {}
 
-export function setMusic(m: boolean) { S.music = m; localStorage.setItem("lrMusic", m ? "1" : "0"); }
-export function setRain(m: boolean) { S.rain = m; localStorage.setItem("lrRain", m ? "1" : "0"); }
+export function setMusic(m: boolean) { S.music = m; lsSet("lrMusic", m ? "1" : "0"); }
+export function setRain(m: boolean) { S.rain = m; lsSet("lrRain", m ? "1" : "0"); }
 // very quiet lullaby loop, off by default (parent corner)
 const MEL = [523, 587, 659, 784, 659, 587, 523, 440, 392, 440, 523, 587, 523, 440, 392, 392];
 let mi = 0;
