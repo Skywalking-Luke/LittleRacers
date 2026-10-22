@@ -1,6 +1,6 @@
 import { g, D, C, R, MIN, hit, Pt, sfx, say, box, bubbles, burst, shuffle, ri, COLS, star, txt, rnd, ptri } from "./core";
 import * as SC from "./scenes";
-import { veh, VW, backdrop, road, place, btnBox, shape, garage, cover, pic, prop, fitPic, tmul } from "./art";
+import { veh, VW, backdrop, road, place, btnBox, shape, garage, cover, coverY, pic, prop, fitPic, tmul } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
 import { fitU } from "./games1";
@@ -286,7 +286,7 @@ export class Kampung extends Game {
   }
   tick(dt: number) { this.places.forEach((p) => ease(p, dt)); const c = this.car; c.x += (c.tx - c.x) * Math.min(1, dt * 1.5); c.y += (c.ty - c.y) * Math.min(1, dt * 1.5); }
   paint() {
-    { const gy = backdrop("kampung", 0.3); SC.kampungSign(D.W * 0.25, gy, D.U * 0.8, S.lang === "bm" ? "KAMPUNG →" : "KAMPUNG →"); SC.tree(D.W * 0.45, gy, D.U * 0.7, "#86AE76"); SC.tree(D.W * 0.7, gy, D.U * 0.6); } const u = D.U;
+    { const gy = backdrop("kampung", 0.3);  SC.tree(D.W * 0.45, gy, D.U * 0.7, "#86AE76"); SC.tree(D.W * 0.7, gy, D.U * 0.6); } const u = D.U;
     // dirt road connecting visited places
     g.strokeStyle = "#D9C6A5"; g.lineWidth = Math.max(MIN * 0.4, this.pu * 6); g.lineCap = "round"; g.beginPath();
     const pts = this.places.slice().sort((a, b) => (D.W > D.H ? a.x - b.x : a.y - b.y)); pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y + p.h * 0.45) : g.moveTo(p.x, p.y + p.h * 0.45))); g.stroke();
@@ -297,6 +297,8 @@ export class Kampung extends Game {
       if (p.done) star(p.x + p.w * 0.45, p.y - p.h * 0.45, u * 3, C.yellow);
     }
     veh("car", this.car.x, this.car.y, Math.max(2, this.pu), C.red, { flip: this.car.tx < this.car.x - 2 });
+    // signpost stands on the sandy ground in the bottom-right corner, drawn last so the stops never hide it
+    SC.kampungSign(D.W - D.U * 9, D.H - D.U * 1.5, D.U * 0.8, S.lang === "bm" ? "KAMPUNG →" : "KAMPUNG →");
   }
 }
 

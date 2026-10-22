@@ -30,6 +30,8 @@ const MUL: Record<string, HTMLCanvasElement> = {};
 export function tmul(k: string, col: string): CanvasImageSource { const im = IMG[k], key = k + col; if (MUL[key]) return MUL[key]; const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext("2d")!; x.drawImage(im, 0, 0); x.globalCompositeOperation = "multiply"; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = "destination-in"; x.drawImage(im, 0, 0); return (MUL[key] = c); }
 // painted star for the warm yellow stars (score, rewards, bedtime count); other colours keep the code star
 HOOK.star = (cx, cy, r, c) => { const im = IMG.star; if (!im || !/^(#F2D894|#E8C25A|#F6DE8A)$/i.test(c) && c !== C.yellow) return false; g.drawImage(im, cx - r * 1.15, cy - r * 1.15, r * 2.3, r * 2.3); return true; };
+/** screen y of a fraction f of a cover()-drawn background's height (null if not loaded) */
+export function coverY(k: string, f: number) { const im = IMG[k]; if (!im) return null; const s = Math.max(D.W / im.naturalWidth, D.H / im.naturalHeight), h = im.naturalHeight * s; return (D.H - h) / 2 + f * h; }
 const BED: Record<string, [string, number]> = { jeep: ["bedtime-jeep", 20], bus: ["bedtime-bus", 32], lorry: ["bedtime-lorry", 25], train: ["bedtime-train", 44], moto: ["bedtime-motorbike", 15] };
 export function wheelIcon(cx: number, cy: number, r: number) { if (IMG.wheel) g.drawImage(IMG.wheel, cx - r, cy - r, 2 * r, 2 * r); return !!IMG.wheel; }
 for (const k in IW) { const im = new Image(); im.onload = () => { IMG[k] = im; onArt && onArt(); }; im.src = "/LittleRacers/art/" + k + ".webp"; }
