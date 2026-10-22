@@ -1,4 +1,5 @@
 import { g, D, C, R, MIN, hit, Pt, sfx, say, box, bubbles, burst, shuffle, ri, COLS, star, txt, rnd, ptri } from "./core";
+import * as SC from "./scenes";
 import { veh, VW, backdrop, road, place, btnBox, shape, garage } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
@@ -44,6 +45,7 @@ export class Count extends Game {
     const gy = backdrop("dusk", 0.4), u = D.U;
     R(0, gy, D.W, D.H - gy, "#D9CFC0");
     const tx = (D.W > D.H ? D.W * 0.66 : D.W * 0.92);
+    SC.tollPlaza(tx, this.cars.length ? this.cars[0].y + this.cars[0].h * 0.4 : gy, u);
     place("toll", tx, this.cars.length ? this.cars[0].y + this.cars[0].h * 0.4 : gy, u);
     for (const c of this.cars) {
       const dx = this.go ? Math.pow(this.go, 2) * D.W * 0.25 : 0;
@@ -80,6 +82,7 @@ export class Maze extends Game {
   paint() {
     const kind = DEST[this.round] === "pasar" ? "pasar" : "taman";
     backdrop(kind as any, 0.12); const u = D.U, w = Math.max(MIN, this.u * 16);
+    SC.townMap(this.pts, w * 0.5 + u * 2, D.H * 0.14);
     g.lineCap = "round"; g.lineJoin = "round";
     const stroke = (c: string, lw: number, dash: number[] = []) => { g.setLineDash(dash); g.strokeStyle = c; g.lineWidth = lw; g.beginPath(); this.pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y))); g.stroke(); g.setLineDash([]); };
     stroke(C.k, w + u * 2); stroke(C.road, w); stroke(C.white, u, [u * 4, u * 4]);
@@ -110,7 +113,7 @@ export class ShapeGarage extends Game {
   }
   tick(dt: number) { if (this.drag !== this.car) ease(this.car, dt, 5); this.car.wig = Math.max(0, this.car.wig - dt); if (this.inT) this.inT = Math.min(1, this.inT + dt); }
   paint() {
-    backdrop("taman", 0.45); const u = D.U;
+    { const gy = backdrop("plain", 0.45); const t0 = this.tun[0]; SC.hillside(D.W / 2, t0 ? t0.y - t0.h * 0.75 : gy * 0.5, Math.max(gy, t0 ? t0.y + t0.h / 2 : gy), D.U); } const u = D.U;
     for (const t of this.tun) { const x = t.x - t.w / 2, y = t.y - t.h / 2; box(x, y, t.w, t.h, t.col, u); R(x + t.w * 0.15, y + t.h * 0.45, t.w * 0.7, t.h * 0.55 - u, "#5e5a6e"); shape(t.s, t.x, y + t.h * 0.24, t.h * 0.15, C.white, u); }
     const c = this.car; if (this.inT >= 1) return;
     g.save(); if (this.inT) g.globalAlpha = 1 - this.inT;
@@ -145,7 +148,7 @@ export class LetterRoad extends Game {
     if (this.wave.every((w) => w.x < -0.1)) this.newWave();
   }
   paint() {
-    R(0, 0, D.W, D.H, C.grass); const u = D.U, top = this.lanesY[0] - this.lh / 2;
+    const u = D.U, top = this.lanesY[0] - this.lh / 2; { const hz = Math.max(D.H * 0.12, top * 0.32); backdrop("plain", hz / D.H); SC.padi(hz, top, u); SC.padi(top + this.lh * 3, D.H + u, u); SC.palm(D.W * 0.04, hz + u * 2, u * 0.6); SC.palm(D.W * 0.9, hz + u * 2, u * 0.6); }
     R(0, top, D.W, this.lh * 3, C.road); for (let i = 1; i < 3; i++) { const y = top + this.lh * i; for (let x = -(this.scroll % (u * 20)); x < D.W; x += u * 20) R(x, y - u / 2, u * 10, u, C.white); }
     // word slots + picture
     const bs = Math.min(this.lh * 0.7, (D.W * 0.5) / this.w.length), by = this.back.y + this.back.h + D.H * 0.07;
@@ -158,8 +161,8 @@ export class LetterRoad extends Game {
 }
 
 // 11. Big Little Race ------------------------------------------------------
-const SETS = [["kancil", "car", "bus"], ["moto", "van", "lorry"], ["kancil", "lorry", "bus"]];
-const SCALE: Record<string, number> = { moto: 0.5, kancil: 0.6, car: 0.8, van: 0.95, lorry: 1.1, bus: 1.25 };
+const SETS = [["moto", "car", "bus"], ["moto", "van", "lorry"], ["car", "lorry", "bus"]];
+const SCALE: Record<string, number> = { moto: 0.55, car: 0.8, van: 0.95, lorry: 1.1, bus: 1.25 };
 export class Race extends Game {
   id = "race"; rounds = 3; vs: Item[] = []; slots: Item[] = []; filled = 0; racing = 0; base = 4;
   start() { this.vs = shuffle(SETS[this.round].map((k, i) => mkItem({ k, rank: i, col: VCOL[(i + this.round) % 6], slot: -1 }))); this.filled = 0; this.racing = 0; this.prompt(); }
@@ -180,7 +183,7 @@ export class Race extends Game {
   }
   tick(dt: number) { this.vs.forEach((v) => { if (this.drag !== v) ease(v, dt, 5); else v.wig = 0; }); if (this.racing) { this.racing += dt; this.vs.forEach((v) => (v.hx = v.x = this.slots[v.slot].x + Math.pow(this.racing, 2) * D.W * 0.08 * (1.2 - v.rank * 0.15))); if (this.racing > 3.2) this.win(D.W / 2, D.H / 2); } }
   paint() {
-    backdrop("kampung", 0.6); const u = D.U;
+    { const gy = backdrop("plain", 0.6); SC.raceCrowd(this.slots.length ? Math.min(gy, this.slots[0].y - this.slots[0].h / 2) : gy, D.U); } const u = D.U;
     for (let i = 0; i < 3; i++) { const s = this.slots[i]; R(0, s.y - s.h / 2 + u, D.W, s.h - u * 2, C.road); R(s.x - s.w / 2, s.y + s.h / 2 - u * 3, u, u * 2, C.white); const vs = this.vs.find((v) => v.slot === i); if (!vs && !this.racing) { const want = SETS[this.round][i]; veh(want, s.x, s.y + s.h * 0.4, Math.max(2, Math.round(this.base * SCALE[want])), C.k, { ghost: true }); } }
     for (let y = 0; y < 6; y++) R(D.W * 0.85, this.slots[0].y - this.slots[0].h / 2 + y * this.slots[0].h * 0.5, u * 3, this.slots[0].h * 0.25, y % 2 ? C.white : C.k);
     for (const v of this.vs) veh(v.k, v.x + wx(v), v.y + (VW[v.k][1] * v.u) / 2, v.u, v.col);
@@ -208,7 +211,7 @@ export class Helper extends Game {
   }
   tick(dt: number) { this.opts.forEach((o) => ease(o, dt)); if (this.sent) { this.st = Math.min(1, this.st + dt * 0.6); } }
   paint() {
-    const gy = backdrop("taman", 0.55), u = D.U, sx = D.W * 0.62, pu = Math.max(2, Math.floor(Math.min(D.W, D.H) / 70));
+    const gy = backdrop("plain", 0.55), u = D.U; SC.shophouses(D.W * 0.02, D.W * 0.42, gy, u * 0.9); SC.tree(D.W * 0.9, gy, u); const sx = D.W * 0.62, pu = Math.max(2, Math.floor(Math.min(D.W, D.H) / 70));
     const fixed = this.sent && this.st > 0.8;
     if (this.need === "fire") { // small cartoon flame on a house, put out with water
       place("home", sx, gy, pu);
@@ -276,7 +279,7 @@ export class Kampung extends Game {
   }
   tick(dt: number) { this.places.forEach((p) => ease(p, dt)); const c = this.car; c.x += (c.tx - c.x) * Math.min(1, dt * 1.5); c.y += (c.ty - c.y) * Math.min(1, dt * 1.5); }
   paint() {
-    backdrop("kampung", 0.3); const u = D.U;
+    { const gy = backdrop("kampung", 0.3); SC.kampungSign(D.W * 0.25, gy, D.U * 0.8, S.lang === "bm" ? "KAMPUNG →" : "KAMPUNG →"); SC.tree(D.W * 0.45, gy, D.U * 0.7, "#86AE76"); SC.tree(D.W * 0.7, gy, D.U * 0.6); } const u = D.U;
     // dirt road connecting visited places
     g.strokeStyle = "#D9C6A5"; g.lineWidth = Math.max(MIN * 0.4, this.pu * 6); g.lineCap = "round"; g.beginPath();
     const pts = this.places.slice().sort((a, b) => (D.W > D.H ? a.x - b.x : a.y - b.y)); pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y + p.h * 0.45) : g.moveTo(p.x, p.y + p.h * 0.45))); g.stroke();

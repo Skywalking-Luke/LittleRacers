@@ -1,8 +1,28 @@
 import { g, D, C, R, pcirc, ptri, box, txt, star, sk, skLine, rrPts, elPts, polyPts, grad, mix, seed, rand } from "./core";
+import SZ from "./artsizes.json";
 export const VW: Record<string, [number, number]> = {
-  car: [18, 11], taxi: [18, 12], kancil: [13, 10], bus: [28, 15], lorry: [28, 14], fire: [28, 14], amb: [22, 13],
+  car: [18, 11], taxi: [18, 12], bus: [28, 15], lorry: [28, 14], fire: [28, 14], amb: [22, 13],
   tow: [26, 13], jeep: [18, 13], train: [40, 13], police: [18, 12], moto: [14, 11], van: [22, 13], build: [24, 12],
 };
+const IW: Record<string, number> = { car: 18, van: 21, lorry: 25, bus: 32, moto: 15 };
+for (const k in IW) { const z = (SZ as any)[k]; VW[k] = [IW[k], +(IW[k] * z[1] / z[0]).toFixed(1)]; }
+/** Sylphy's painted vehicles (self-hosted WebP, mirrored to face right). recoloured per colour on demand. */
+const IMG: Record<string, HTMLImageElement> = {}, TINT: Record<string, HTMLCanvasElement> = {}, BASEHUE: Record<string, number> = {};
+const rgb2hsl = (r: number, g2: number, b: number) => { r /= 255; g2 /= 255; b /= 255; const mx = Math.max(r, g2, b), mn = Math.min(r, g2, b), l = (mx + mn) / 2; if (mx === mn) return [0, 0, l]; const d = mx - mn, s2 = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); const h = mx === r ? (g2 - b) / d + (g2 < b ? 6 : 0) : mx === g2 ? (b - r) / d + 2 : (r - g2) / d + 4; return [h * 60, s2, l]; };
+const hsl2rgb = (h: number, s2: number, l: number) => { const k = (n: number) => (n + h / 30) % 12, a2 = s2 * Math.min(l, 1 - l), f = (n: number) => l - a2 * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); return [f(0) * 255, f(8) * 255, f(4) * 255]; };
+let onArt: (() => void) | null = null; export function whenArt(f: () => void) { onArt = f; }
+for (const k in IW) { const im = new Image(); im.onload = () => { IMG[k] = im; onArt && onArt(); }; im.src = "/LittleRacers/art/" + k + ".webp"; }
+function tinted(k: string, col: string): CanvasImageSource {
+  const im = IMG[k], key = k + col; if (TINT[key]) return TINT[key];
+  const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext("2d")!; x.drawImage(im, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+  if (BASEHUE[k] === undefined) { const hist = new Array(36).fill(0); for (let i = 0; i < p.length; i += 16) { if (p[i + 3] < 200) continue; const [h, s2, l] = rgb2hsl(p[i], p[i + 1], p[i + 2]); if (s2 > 0.3 && l > 0.25 && l < 0.85) hist[Math.floor(h / 10) % 36]++; } BASEHUE[k] = hist.indexOf(Math.max(...hist)) * 10 + 5; }
+  const t = /^#([0-9a-f]{6})$/i.exec(col); if (!t) return (TINT[key] = c);
+  const n = parseInt(t[1], 16), [th, ts, tl] = rgb2hsl((n >> 16) & 255, (n >> 8) & 255, n & 255), bh = BASEHUE[k];
+  for (let i = 0; i < p.length; i += 4) { if (p[i + 3] < 10) continue; const [h, s2, l] = rgb2hsl(p[i], p[i + 1], p[i + 2]); let dh = Math.abs(h - bh); dh = Math.min(dh, 360 - dh); if (dh > 28 || s2 < 0.22) continue;
+    const [r, g2, b] = hsl2rgb(th, Math.min(1, ts * (0.6 + s2 * 0.6)), Math.max(0, Math.min(1, l + (tl - 0.62) * 0.8))); p[i] = r; p[i + 1] = g2; p[i + 2] = b; }
+  x.putImageData(d, 0, 0); return (TINT[key] = c);
+}
 export type VOpt = { flip?: boolean; lights?: boolean; flash?: boolean; body?: boolean; wheels?: number; roof?: boolean; ghost?: boolean };
 /** bedtime sets this so vehicles get sleepy half-closed eyes */
 export const ART = { sleepy: false };
@@ -36,6 +56,11 @@ export function veh(kind: string, cx: number, gy: number, u: number, col: string
   const siren = (ix: number, iy: number) => { B(ix, iy, 4.2, 1.7, "#F6F1E6", 0.8); const on = o.flash ? Math.sin(D.t * 4) > 0 : true; g.fillStyle = on ? "#E58C8C" : "#b88"; g.beginPath(); g.arc(X(ix + 1.1), Y(iy + 0.85), u * 0.6, 0, 7); g.fill(); g.fillStyle = on ? "#8DB3E2" : "#89a"; g.beginPath(); g.arc(X(ix + 3.1), Y(iy + 0.85), u * 0.6, 0, 7); g.fill(); };
   // soft ground shadow
   g.fillStyle = "rgba(60,50,40,.13)"; g.beginPath(); g.ellipse(cx, gy + u * 0.2, w * u * 0.5, u * 1.1, 0, 0, 7); g.fill();
+  if (IMG[kind] && IW[kind]) {
+    g.drawImage(tinted(kind, col), x0, y0, w * u, h * u);
+    if (o.lights) { const lx = x0 + w * u * 0.97, ly = y0 + h * u * 0.62, gr = g.createRadialGradient(lx, ly, u, lx + 4 * u, ly, u * 8); gr.addColorStop(0, "rgba(255,240,160,.7)"); gr.addColorStop(1, "rgba(255,240,160,0)"); g.fillStyle = gr; g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 9 * u, ly - 3 * u); g.lineTo(lx + 9 * u, ly + 3 * u); g.closePath(); g.fill(); }
+    g.restore(); return { w: w * u, h: h * u };
+  }
   switch (kind) {
     case "car": case "taxi": case "police": {
       const top = kind === "car" ? 0 : 1;
@@ -54,7 +79,6 @@ export function veh(kind: string, cx: number, gy: number, u: number, col: string
     case "train": { for (let c = 0; c < 2; c++) { B(c * 14, 2, 13, 9, c ? C.lav : C.yellow, 2); Win(c * 14 + 2, 4, 4, 3); Win(c * 14 + 7, 4, 4, 3); }
       B(25, 0.5, 3, 3.5, "#6d6763", 1); B(28, 0, 12, 11, col, 2.6); Win(30, 1.8, 6.5, 4); E(31, 3.8, 0.85); lamp(39, 7.5); smile(36.5, 8.6, 1.6);
       R(X(0), Y(10.4), 40 * u, u, C.k); for (const wx of [3, 10, 17, 24, 31, 37]) W(wx, 11, 1.7); break; }
-    case "kancil": B(2, 0, 8, 5.6, col, 2.8); Win(3, 0.9, 5.6, 3.2); B(0, 3.8, 13, 5.2, col, 2.4); E(5.4, 2.5, 0.75); lamp(12.2, 5.4); tail(0.5, 5.4); smile(10.6, 7, 1.3); W(3.5, 8, 1.9); W(9.5, 8, 1.9); break;
     case "bus": B(0, 0, 28, 13, col, 3); for (let i = 0; i < 4; i++) Win(2 + i * 5, 2, 4, 4); Win(22.2, 1.6, 5, 5.6);
       R(X(1), Y(8.2), 26 * u, u * 0.9, "rgba(255,255,255,.75)"); B(20, 7.2, 1.8, 4.6, C.win, 0.6); E(23, 4.3, 0.9); lamp(27, 10.4); smile(25.6, 10.4, 1.6); W(6, 13); W(22, 13); break;
     case "lorry": case "fire": case "tow": {

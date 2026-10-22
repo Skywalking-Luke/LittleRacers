@@ -8,7 +8,7 @@ for (const [name, w, h] of VPS) {
   const errs = [], ext = [];
   p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); }); p.on("pageerror", (e) => errs.push(String(e)));
   p.on("request", (r) => { if (!r.url().startsWith("http://localhost:8765")) ext.push(r.url()); });
-  await p.goto("http://localhost:8765/LittleRacers/", { waitUntil: "networkidle0" });
+  await p.goto("http://localhost:8765/LittleRacers/", { waitUntil: "load", timeout: 120000 });
   const cdp = await p.target().createCDPSession();
   const T = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
   const tap = async (x, y) => { await T("touchStart", x, y); await new Promise((r) => setTimeout(r, 60)); await T("touchEnd"); };

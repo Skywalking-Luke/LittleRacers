@@ -1,4 +1,5 @@
 import { g, D, C, R, MIN, hit, Pt, sfx, say, box, bubbles, burst, shuffle, ri, COLS, star, txt, rnd } from "./core";
+import * as SC from "./scenes";
 import { veh, VW, backdrop, road, garage, place, btnBox, shape } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
@@ -37,7 +38,7 @@ export class Beep extends Game {
   }
   tick(dt: number) { for (const it of this.items) { ease(it, dt); it.glow = Math.max(0, it.glow - dt); if (it.dx) { it.dx += dt * D.W * 0.35; if (it.dx > D.W) it.dx = -D.W * 0.3; if (it.dx < 0 && it.dx + dt * D.W * 0.35 >= 0) it.dx = 0; } } }
   paint() {
-    backdrop("taman", 0.55);
+    { const gy = backdrop("plain", 0.55), u = D.U; SC.terrace(-u * 3, D.W, gy, u * 0.9); SC.lampPost(D.W * 0.33, gy, u); SC.lampPost(D.W * 0.7, gy, u); }
     for (const it of this.items) {
       const gy = it.y + (it.u * VW[it.k][1]) / 2 + bobY(it);
       R(it.x - it.w * 0.45, gy - D.U, it.w * 0.9, D.U * 3, "rgba(74,74,72,.12)");
@@ -76,7 +77,7 @@ export class Wash extends Game {
   drag2(p: Pt) { this.rub(p); }
   tick(dt: number) { if (this.drive > 0) { this.drive += dt * D.W * 0.3; if (this.drive > D.W * 0.8 && this.wait <= 0) this.win(D.W / 2, D.H * 0.4, "x_praise4"); } }
   paint() {
-    backdrop("taman", 0.66); const u = this.u, r = this.carRect();
+    { const gy = backdrop("plain", 0.66); SC.rainTree(D.W * 0.12, gy, D.U * 1.1); SC.rainTree(D.W * 0.9, gy, D.U * 0.9); } const u = this.u, r = this.carRect();
     // wash bay
     R(r.x - 8 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x + r.w + 6 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x - 8 * u, this.gy - 19 * u, r.w + 16 * u, 2 * u, C.blue);
     g.save(); g.translate(this.drive, 0);
@@ -96,7 +97,7 @@ export class Wash extends Game {
 export class Peek extends Game {
   id = "peek"; rounds = 3; items: Item[] = [];
   start() {
-    const pool = this.round === 0 ? ["lorry", "taxi", "car"] : shuffle(["lorry", "taxi", "bus", "moto", "van", "kancil", "car"]).slice(0, 3);
+    const pool = this.round === 0 ? ["lorry", "taxi", "car"] : shuffle(["lorry", "taxi", "bus", "moto", "van", "car"]).slice(0, 3);
     const cols = shuffle([C.red, C.yellow, C.blue, C.green, C.lav]);
     this.items = shuffle(pool).map((k, i) => mkItem({ k, gcol: cols[i], vcol: k === "taxi" ? C.red : cols[(i + 2) % 5], open: 0, opening: false }));
     this.prompt();
@@ -120,7 +121,7 @@ export class Peek extends Game {
   }
   tick(dt: number) { for (const it of this.items) { ease(it, dt); if (it.opening) it.open = Math.min(1, it.open + dt * 1.5); } }
   paint() {
-    backdrop("taman", 0.5);
+    { const gy = backdrop("kampung", 0.5); SC.fence(gy, D.U); }
     for (const it of this.items) {
       const x = it.x - it.w / 2, y = it.y - it.h / 2 + it.h * 0.2;
       garage(x, y, it.w, it.h * 0.8, it.gcol, it.open);
@@ -160,7 +161,7 @@ export class ColourPark extends Game {
   }
   tick(dt: number) { if (this.drag !== this.car) ease(this.car, dt, 5); this.car.wig = Math.max(0, this.car.wig - dt); }
   paint() {
-    R(0, 0, D.W, D.H, C.road); const u = D.U;
+    R(0, 0, D.W, D.H, C.road); SC.carparkTop(); const u = D.U;
     for (let x = 0; x < D.W; x += u * 12) R(x, D.H * 0.55, u * 6, u, C.white);
     for (const s of this.spots) {
       const x = s.x - s.w / 2, y = s.y - s.h / 2;
@@ -190,7 +191,8 @@ export class Light extends Game {
   }
   paint() {
     const gy = backdrop("kampung", 0.55), u = D.U, rh = D.H * 0.2;
-    road(gy + u * 4, rh, this.carX * D.W * 2);
+    place("school", D.W * 0.78, gy, u * 0.8);
+    road(gy + u * 4, rh, this.carX * D.W * 2); SC.zebra(D.W * 0.66, gy + u * 4, rh, u);
     // light
     const lx = D.W * 0.5, lw = Math.max(40, u * 12), lh = lw * 2.6, ly = gy - lh - u * 10;
     R(lx - u, ly + lh, u * 2, gy + u * 4 - ly - lh, C.k); box(lx - lw / 2, ly, lw, lh, C.k, u, C.k);
@@ -235,7 +237,7 @@ export class Build extends Game {
   }
   tick(dt: number) { if (this.drag !== this.piece) ease(this.piece, dt, 6); else this.piece.wig = 0; if (this.drive > 0) { this.drive += dt * D.W * 0.3; if (this.drive > D.W * 0.7) this.win(D.W / 2, D.H / 2); } }
   paint() {
-    const gy0 = backdrop("taman", this.gy / D.H + 0.02), u = this.u;
+    const gy0 = SC.workshop(this.gy + D.H * 0.02), u = this.u;
     g.save(); g.translate(this.drive, 0);
     veh("build", this.cx, this.gy, u, this.col, { ghost: true, body: true, roof: true, wheels: 4 });
     veh("build", this.cx, this.gy, u, this.col, { body: this.stage >= 1, wheels: this.wheels, roof: this.stage >= 3 });

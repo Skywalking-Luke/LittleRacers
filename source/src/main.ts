@@ -1,6 +1,7 @@
+import { moon } from "./scenes";
 import { cur } from "./core";
 import { heart, g, D, C, R, MIN, hit, Rect, Scene, Pt, go, resize, loop, sfx, say, box, txt, star, fullscreen, ptri, pcirc } from "./core";
-import { veh, place, garage, shape, btnBox, speakerIcon, backdrop, homeIcon } from "./art";
+import { veh, place, garage, shape, btnBox, speakerIcon, backdrop, homeIcon, whenArt } from "./art";
 import { setHome, drizzle } from "./game";
 import { S, setLang, setMute, setMusic, setRain, unlock } from "./audio";
 import { Beep, Wash, Peek, ColourPark, Light, Build } from "./games1";
@@ -20,7 +21,7 @@ const GAMES: GDef[] = [
   { id: "maze", age: 4, name: "g_maze", col: C.green, make: () => new Maze(), icon: (x, y, s) => { g.strokeStyle = C.road; g.lineWidth = s * 0.12; g.beginPath(); g.moveTo(x + s * 0.15, y + s * 0.8); g.lineTo(x + s * 0.4, y + s * 0.8); g.lineTo(x + s * 0.4, y + s * 0.4); g.lineTo(x + s * 0.8, y + s * 0.4); g.stroke(); place("home", x + s * 0.78, y + s * 0.42, U(s, 70)); veh("car", x + s * 0.22, y + s * 0.84, U(s, 60), C.red); } },
   { id: "shape", age: 4, name: "g_shape", col: C.blue, make: () => new ShapeGarage(), icon: (x, y, s) => { const u = U(s, 40); shape("circle", x + s * 0.25, y + s * 0.35, s * 0.1, C.red, u); shape("square", x + s * 0.5, y + s * 0.35, s * 0.1, C.yellow, u); shape("triangle", x + s * 0.75, y + s * 0.35, s * 0.1, C.green, u); veh("car", x + s / 2, y + s * 0.85, U(s, 36), C.lav); } },
   { id: "letter", age: 5, name: "g_letter", col: C.pink, make: () => new LetterRoad(), icon: (x, y, s) => { txt("ABC", x + s / 2, y + s * 0.32, s * 0.2, C.white); veh("car", x + s / 2, y + s * 0.82, U(s, 30), C.red); } },
-  { id: "race", age: 5, name: "g_race", col: C.lav, make: () => new Race(), icon: (x, y, s) => { veh("kancil", x + s * 0.22, y + s * 0.8, U(s, 50), C.red); veh("car", x + s * 0.5, y + s * 0.8, U(s, 44), C.yellow); veh("bus", x + s * 0.5, y + s * 0.45, U(s, 40), C.blue); } },
+  { id: "race", age: 5, name: "g_race", col: C.lav, make: () => new Race(), icon: (x, y, s) => { veh("moto", x + s * 0.22, y + s * 0.8, U(s, 50), C.red); veh("car", x + s * 0.5, y + s * 0.8, U(s, 44), C.yellow); veh("bus", x + s * 0.5, y + s * 0.45, U(s, 40), C.blue); } },
   { id: "help", age: 5, name: "g_help", col: C.orange, make: () => new Helper(), icon: (x, y, s) => { veh("fire", x + s / 2, y + s * 0.5, U(s, 34), C.red); veh("amb", x + s / 2, y + s * 0.88, U(s, 44), C.white); } },
   { id: "kampung", age: 5, name: "g_kampung", col: C.green, make: () => new Kampung(), icon: (x, y, s) => { place("atuk", x + s * 0.55, y + s * 0.82, U(s, 36)); } },
 ];
@@ -70,7 +71,7 @@ class Hub implements Scene {
     const p = this.par; btnBox(p.x, p.y, p.w, p.h, C.grey); // lock icon + hold ring
     R(p.x + p.w * 0.3, p.y + p.h * 0.45, p.w * 0.4, p.h * 0.32, C.k); R(p.x + p.w * 0.36, p.y + p.h * 0.22, p.w * 0.06, p.h * 0.25, C.k); R(p.x + p.w * 0.58, p.y + p.h * 0.22, p.w * 0.06, p.h * 0.25, C.k); R(p.x + p.w * 0.36, p.y + p.h * 0.2, p.w * 0.28, p.h * 0.06, C.k);
     if (this.holding) { g.strokeStyle = C.green; g.lineWidth = u * 2; g.beginPath(); g.arc(p.x + p.w / 2, p.y + p.h / 2, p.w * 0.62, -Math.PI / 2, -Math.PI / 2 + (this.hold / 3) * Math.PI * 2); g.stroke(); }
-    const bd = this.bed; btnBox(bd.x, bd.y, bd.w, bd.h, "#2E3A59"); pcirc(bd.x + bd.w * 0.25, bd.y + bd.h * 0.45, bd.h * 0.26, "#F2D894"); pcirc(bd.x + bd.w * 0.25 + bd.h * 0.12, bd.y + bd.h * 0.38, bd.h * 0.22, "#2E3A59");
+    const bd = this.bed; btnBox(bd.x, bd.y, bd.w, bd.h, "#2E3A59"); moon(bd.x + bd.w * 0.25, bd.y + bd.h * 0.45, bd.h * 0.26, "#F2D894");
     for (let i = 0; i < 3; i++) star(bd.x + bd.w * (0.55 + i * 0.13), bd.y + bd.h * (0.3 + (i % 2) * 0.2), bd.h * 0.08, "#FAF6EE", false);
     veh("jeep", bd.x + bd.w * 0.7, bd.y + bd.h * 0.88, Math.max(2, Math.floor(bd.h / 26)), C.green);
     if (S.rain) drizzle();
@@ -114,9 +115,9 @@ class Hub implements Scene {
 }
 const hub = new Hub();
 setHome(() => hub);
-(window as any).__lr = { go, hub, GAMES, D, cur: () => cur() };
+(window as any).__lr = { go, hub, GAMES, D, veh, cur: () => cur() };
 addEventListener("resize", resize);
 addEventListener("orientationchange", () => setTimeout(resize, 200));
-go(hub); resize();
+go(hub); resize(); whenArt(() => resize());
 (document as any).fonts && (document as any).fonts.load("600 16px Fredoka").catch(() => {});
 requestAnimationFrame(loop);
