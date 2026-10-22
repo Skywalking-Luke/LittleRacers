@@ -247,7 +247,7 @@ export class Helper extends Game {
 const ROUTES = [["petrol", "atuk"], ["petrol", "durian", "atuk"], ["petrol", "durian", "atuk"]];
 const EXTRA = [["durian"], ["school"], ["school", "pasar"]];
 export class Kampung extends Game {
-  id = "kampung"; rounds = 3; route: string[] = []; tok = 0; places: Item[] = []; step = 0; showing = true; car = { x: 0, y: 0, tx: 0, ty: 0 }; showI = -1; pu = 3; signAt = { x: 0, y: 0 };
+  id = "kampung"; rounds = 3; route: string[] = []; tok = 0; places: Item[] = []; step = 0; showing = true; car = { x: 0, y: 0, tx: 0, ty: 0 }; showI = -1; pu = 3; signAt = { x: 0, y: 0 }; cam = 0; camMax = 0; follow = false;
   start() {
     this.route = ROUTES[this.round]; this.step = 0; this.showing = true; this.showI = -1;
     this.places = shuffle([...this.route, ...EXTRA[this.round]]).map((k) => mkItem({ k, done: false }));
@@ -268,9 +268,16 @@ export class Kampung extends Game {
     // stops stand on the painted ground band of bg-kampung (below its horizon), spaced in a grid with no overlaps; car + sign keep clear of the HUD
     const land = D.W > D.H, n = this.places.length, u = D.U, hud = this.back.y + this.back.h + u * 2;
     const gTop = Math.max(hud + u * 10, coverY("bg-kampung", 0.74) ?? D.H * 0.62), bot = D.H - u * 2;
-    const cols = land ? n : Math.min(3, n), rows = Math.ceil(n / cols), x0 = land ? D.W * 0.2 : D.W * 0.02, x1 = D.W * 0.98;
-    const cw = (x1 - x0) / cols, ch = (bot - gTop - u * 4) / rows;
+    const cols = land ? n : Math.min(3, n), rows = Math.ceil(n / cols);
+    let x0 = land ? D.W * 0.2 : D.W * 0.02, x1 = D.W * 0.98;
+    let cw = (x1 - x0) / cols;
+    let ch = (bot - gTop - u * 4) / rows;
     this.pu = Math.max(2, Math.floor(Math.min(cw / 33, ch / 28)));
+    // short landscape phones: keep portrait-sized stops on a wider road and let the view follow the car (off for reduced motion)
+    const rm = matchMedia("(prefers-reduced-motion: reduce)").matches, ppu = Math.max(2, Math.floor((D.H * 0.96) / 3 / 33));
+    this.follow = land && D.H < 600 && !rm && ppu > this.pu; this.camMax = 0;
+    if (this.follow) { this.pu = ppu; const fw = 36 * ppu; x0 = D.W * 0.22; x1 = x0 + fw * n; this.camMax = Math.max(0, x1 + D.W * 0.03 - D.W); cw = fw; ch = Math.max(ch, 28 * ppu); if (!this.camMax) this.follow = false; }
+    if (!this.follow) this.cam = 0;
     this.places.forEach((p, i) => {
       const r = Math.floor(i / cols), inRow = Math.min(cols, n - r * cols), c = i % cols, rx0 = x0 + ((cols - inRow) * cw) / 2;
       p.w = Math.max(MIN, 30 * this.pu); p.h = Math.max(MIN, 26 * this.pu);
@@ -279,8 +286,8 @@ export class Kampung extends Game {
     this.signAt = land ? { x: D.W * 0.1, y: gTop + u * 6 } : { x: D.W * 0.86, y: gTop };
     if (this.step === 0 || !this.car.x) { this.car.x = this.car.tx = land ? D.W * 0.1 : D.W * 0.16; this.car.y = this.car.ty = land ? bot : gTop; }
   }
-  press(p: Pt) {
-    if (this.showing) return;
+  press(q: Pt) {
+    if (this.showing) return; const p = { ...q, x: q.x + this.cam };
     for (const pl of this.places) if (hit(p, rectOf(pl))) {
       if (pl.k === this.route[this.step]) { pl.done = true; pl.bob = 1; this.car.tx = pl.x - pl.w * 0.45; this.car.ty = pl.y + pl.h * 0.45; sfx.ding(); this.step++;
         if (this.step >= this.route.length) this.win(pl.x, pl.y - pl.h / 2, "43", undefined, 3.4); else say("x_kp_next"); }
@@ -288,9 +295,11 @@ export class Kampung extends Game {
       return;
     }
   }
-  tick(dt: number) { this.places.forEach((p) => ease(p, dt)); const c = this.car; c.x += (c.tx - c.x) * Math.min(1, dt * 1.5); c.y += (c.ty - c.y) * Math.min(1, dt * 1.5); }
+  tick(dt: number) { this.places.forEach((p) => ease(p, dt)); const c = this.car; c.x += (c.tx - c.x) * Math.min(1, dt * 1.5); c.y += (c.ty - c.y) * Math.min(1, dt * 1.5);
+    // camera lags gently behind the car: heavy easing + low max speed, no snaps
+    if (this.follow) { const t = Math.min(this.camMax, Math.max(0, c.x - D.W * 0.45)); let v = (t - this.cam) * Math.min(1, dt * 0.7); const mx = D.W * 0.18 * dt; v = Math.max(-mx, Math.min(mx, v)); this.cam += v; } }
   paint() {
-    { const gy = backdrop("kampung", 0.3);  SC.tree(D.W * 0.45, gy, D.U * 0.7, "#86AE76"); SC.tree(D.W * 0.7, gy, D.U * 0.6); } const u = D.U;
+    { const gy = backdrop("kampung", 0.3);  SC.tree(D.W * 0.45, gy, D.U * 0.7, "#86AE76"); SC.tree(D.W * 0.7, gy, D.U * 0.6); } const u = D.U; g.save(); g.translate(-this.cam, 0);
     // dirt road connecting visited places
     g.strokeStyle = "#D9C6A5"; g.lineWidth = Math.max(MIN * 0.4, this.pu * 6); g.lineCap = "round"; g.beginPath();
     const pts = this.places.slice().sort((a, b) => (D.W > D.H ? a.x - b.x : a.y - b.y)); pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y + p.h * 0.45) : g.moveTo(p.x, p.y + p.h * 0.45))); g.stroke();
@@ -302,7 +311,7 @@ export class Kampung extends Game {
     }
     veh("car", this.car.x, this.car.y, Math.max(2, this.pu), C.red, { flip: this.car.tx < this.car.x - 2 });
     // signpost stands on the ground beside the car start, clear of the stops and their highlight
-    SC.kampungSign(this.signAt.x, this.signAt.y, D.U * 0.8, S.lang === "bm" ? "KAMPUNG →" : "KAMPUNG →");
+    SC.kampungSign(this.signAt.x, this.signAt.y, D.U * 0.8, S.lang === "bm" ? "KAMPUNG →" : "KAMPUNG →"); g.restore();
   }
 }
 
