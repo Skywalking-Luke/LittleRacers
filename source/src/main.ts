@@ -47,9 +47,11 @@ class Hub implements Scene {
       for (let a = 2; a <= 5; a++) { const gs = GAMES.filter((g) => g.age === a), y = top + rh * (a - 2); this.ages.push({ r: { x: u * 2, y: y + rh / 2 - bw / 2, w: bw, h: bw }, a });
         gs.forEach((d, i) => this.btns.push({ r: { x: u * 5 + bw + i * bs * 1.05, y: y + (rh - bs) / 2, w: bs, h: bs }, d })); }
     }
-    const pw = Math.min(D.W * 0.8, 520), ph = Math.max(MIN, Math.min(90, D.H * 0.11)), px = (D.W - pw) / 2;
-    let py = D.H * 0.2;
-    for (const k of ["sound", "music", "rain", "lang", "close"]) { this.pbtn[k] = { x: px, y: py, w: pw, h: ph }; py += ph + u * 3; }
+    const keys = ["sound", "music", "rain", "lang", "arcade", "close"], ph = Math.max(MIN, Math.min(80, D.H * 0.095));
+    const two = keys.length * (ph + u * 3) + u * 40 > D.H, cols = two ? 2 : 1, rows = keys.length / cols;
+    const pw = two ? Math.min(D.W * 0.42, 400) : Math.min(D.W * 0.8, 520), gap = u * 4, tot = pw * cols + gap * (cols - 1), px0 = (D.W - tot) / 2;
+    const py0 = Math.max(u * 18, D.H / 2 - (rows * (ph + u * 3)) / 2);
+    keys.forEach((k, i) => { const c = two ? i % 2 : 0, r = two ? Math.floor(i / 2) : i; this.pbtn[k] = { x: px0 + c * (pw + gap), y: py0 + r * (ph + u * 3), w: pw, h: ph }; });
   }
   update(dt: number) { this.t += dt; if (this.holding) { this.hold += dt; if (this.hold >= 3) { this.holding = false; this.hold = 0; this.parent = true; sfx.ding(); say("x_parent"); } } }
   draw() {
@@ -71,15 +73,16 @@ class Hub implements Scene {
   }
   drawParent() {
     R(0, 0, D.W, D.H, "rgba(74,74,72,.6)"); const b = this.pbtn, u = D.U, fs = Math.min(16, D.W / 34);
-    const all = Object.values(b); const top = all[0].y - u * 14; box(all[0].x - u * 4, top, all[0].w + u * 8, all[all.length - 1].y + all[0].h + u * 14 - top + u * 14, C.bg, u);
+    const all = Object.values(b); const x0 = Math.min(...all.map((r) => r.x)), x1 = Math.max(...all.map((r) => r.x + r.w)), y1 = Math.max(...all.map((r) => r.y + r.h)); const top = all[0].y - u * 14; box(x0 - u * 4, top, x1 - x0 + u * 8, y1 + u * 14 - top, C.bg, u);
     txt("PARENT CORNER", D.W / 2, top + u * 7, fs, C.k, "center", false);
-    const row = (k: string, label: string, on?: boolean) => { const r = b[k]; btnBox(r.x, r.y, r.w, r.h, on === undefined ? C.yellow : on ? C.green : C.grey); txt(label, r.x + r.w / 2, r.y + r.h / 2, fs * 0.9, C.k, "center", false); };
+    const y1b = 0; const row = (k: string, label: string, on?: boolean) => { const r = b[k]; btnBox(r.x, r.y, r.w, r.h, on === undefined ? C.yellow : on ? C.green : C.grey); txt(label, r.x + r.w / 2, r.y + r.h / 2, fs * 0.9, C.k, "center", false); };
     row("sound", "SOUND & VOICE: " + (S.mute ? "OFF" : "ON"), !S.mute);
     row("music", "SOFT MUSIC: " + (S.music ? "ON" : "OFF"), S.music);
     row("rain", "GENTLE RAIN: " + (S.rain ? "ON" : "OFF"), S.rain);
     row("lang", "LANGUAGE: " + (S.lang === "en" ? "ENGLISH" : "BAHASA MELAYU"));
+    row("arcade", "LH CARS ARCADE HOME");
     row("close", "CLOSE");
-    const ny = b.close.y + b.close.h + u * 6;
+    const ny = y1 + u * 4;
     txt("No ads, no tracking, no data collected.", D.W / 2, ny, fs * 0.6, C.dark, "center", false);
     txt("Tanpa iklan, tanpa jejak, tiada data.", D.W / 2, ny + fs * 1.3, fs * 0.6, C.dark, "center", false);
   }
@@ -88,7 +91,7 @@ class Hub implements Scene {
     if (this.parent) {
       const b = this.pbtn; sfx.tap();
       if (hit(p, b.sound)) setMute(!S.mute); else if (hit(p, b.music)) setMusic(!S.music); else if (hit(p, b.rain)) setRain(!S.rain);
-      else if (hit(p, b.lang)) { setLang(S.lang === "en" ? "bm" : "en"); say("x_lang"); } else if (hit(p, b.close)) this.parent = false;
+      else if (hit(p, b.lang)) { setLang(S.lang === "en" ? "bm" : "en"); say("x_lang"); } else if (hit(p, b.arcade)) { location.href = "https://lhcars.my/"; } else if (hit(p, b.close)) this.parent = false;
       return;
     }
     if (hit(p, this.par, 4)) { this.holding = true; this.hold = 0; return; }
