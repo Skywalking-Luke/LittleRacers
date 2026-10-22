@@ -1,6 +1,6 @@
 import { g, D, C, R, MIN, hit, Pt, sfx, say, box, bubbles, burst, shuffle, ri, COLS, star, txt, rnd } from "./core";
 import * as SC from "./scenes";
-import { veh, VW, backdrop, road, garage, place, btnBox, shape } from "./art";
+import { veh, VW, backdrop, road, garage, place, btnBox, shape, cover, pic, prop, fitPic, tmul } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
 export const fitU = (k: string, w: number, h: number) => Math.max(2, Math.floor(Math.min(w / VW[k][0], h / VW[k][1])));
@@ -38,7 +38,7 @@ export class Beep extends Game {
   }
   tick(dt: number) { for (const it of this.items) { ease(it, dt); it.glow = Math.max(0, it.glow - dt); if (it.dx) { it.dx += dt * D.W * 0.35; if (it.dx > D.W) it.dx = -D.W * 0.3; if (it.dx < 0 && it.dx + dt * D.W * 0.35 >= 0) it.dx = 0; } } }
   paint() {
-    { const gy = backdrop("plain", 0.55), u = D.U; SC.terrace(-u * 3, D.W, gy, u * 0.9); SC.lampPost(D.W * 0.33, gy, u); SC.lampPost(D.W * 0.7, gy, u); }
+    { const gy = backdrop("plain", 0.55), u = D.U; if (cover("bg-taman")) {} else { SC.terrace(-u * 3, D.W, gy, u * 0.9); SC.lampPost(D.W * 0.33, gy, u); SC.lampPost(D.W * 0.7, gy, u); } }
     for (const it of this.items) {
       const gy = it.y + (it.u * VW[it.k][1]) / 2 + bobY(it);
       R(it.x - it.w * 0.45, gy - D.U, it.w * 0.9, D.U * 3, "rgba(74,74,72,.12)");
@@ -77,13 +77,13 @@ export class Wash extends Game {
   drag2(p: Pt) { this.rub(p); }
   tick(dt: number) { if (this.drive > 0) { this.drive += dt * D.W * 0.3; if (this.drive > D.W * 0.8 && this.wait <= 0) this.win(D.W / 2, D.H * 0.4, "x_praise4"); } }
   paint() {
-    { const gy = backdrop("plain", 0.66); SC.rainTree(D.W * 0.12, gy, D.U * 1.1); SC.rainTree(D.W * 0.9, gy, D.U * 0.9); } const u = this.u, r = this.carRect();
+    { const gy = backdrop("plain", 0.66); if (!cover("bg-dusk")) { SC.rainTree(D.W * 0.12, gy, D.U * 1.1); SC.rainTree(D.W * 0.9, gy, D.U * 0.9); } } const u = this.u, r = this.carRect();
     // wash bay
     R(r.x - 8 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x + r.w + 6 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x - 8 * u, this.gy - 19 * u, r.w + 16 * u, 2 * u, C.blue);
     g.save(); g.translate(this.drive, 0);
     veh("car", this.cx, this.gy, u, this.col);
-    this.mud.forEach((m, i) => { if (m) { const ii = i % 6, jj = Math.floor(i / 6); const mx = r.x + ((ii + 0.5) * r.w) / 6, my = r.y + ((jj + 0.5) * r.h) / 4, k = 0.8 + ((i * 37) % 10) / 25; g.fillStyle = (ii + jj) % 2 ? "rgba(168,133,102,.92)" : "rgba(154,122,92,.92)"; g.beginPath(); g.ellipse(mx, my, (r.w / 11) * k, (r.h / 7.5) * k, (i % 5) * 0.6, 0, 7); g.fill(); g.beginPath(); g.arc(mx + (r.w / 12) * k, my - (r.h / 10), r.w / 34, 0, 7); g.fill(); } });
-    if (this.foam > 0) for (let i = 0; i < 30 * this.foam; i++) { const x = r.x + ((i * 37) % 100) / 100 * r.w, y = r.y + ((i * 61) % 100) / 100 * r.h * 0.8; R(x, y, u * 3, u * 3, "rgba(255,255,255,.95)"); }
+    this.mud.forEach((m, i) => { if (m) { const ii = i % 6, jj = Math.floor(i / 6); const mx = r.x + ((ii + 0.5) * r.w) / 6, my = r.y + ((jj + 0.5) * r.h) / 4, k = 0.8 + ((i * 37) % 10) / 25; if (pic("mud-splat")) { const mw = (r.w / 7.5) * k; g.drawImage(pic("mud-splat")!, mx - mw / 2, my - mw * 0.4, mw, mw * 0.8); return; } g.fillStyle = (ii + jj) % 2 ? "rgba(168,133,102,.92)" : "rgba(154,122,92,.92)"; g.beginPath(); g.ellipse(mx, my, (r.w / 11) * k, (r.h / 7.5) * k, (i % 5) * 0.6, 0, 7); g.fill(); g.beginPath(); g.arc(mx + (r.w / 12) * k, my - (r.h / 10), r.w / 34, 0, 7); g.fill(); } });
+    if (this.foam > 0 && pic("bubbles")) { for (let i = 0; i < 10 * this.foam; i++) { const x = r.x + ((i * 37) % 100) / 100 * r.w, y = r.y + ((i * 61) % 100) / 100 * r.h * 0.8, bs = r.w * (0.16 + (i % 3) * 0.04); g.drawImage(pic("bubbles")!, x - bs / 2, y - bs / 2, bs, bs); } } else if (this.foam > 0) for (let i = 0; i < 30 * this.foam; i++) { const x = r.x + ((i * 37) % 100) / 100 * r.w, y = r.y + ((i * 61) % 100) / 100 * r.h * 0.8; R(x, y, u * 3, u * 3, "rgba(255,255,255,.95)"); }
     if (this.phase === 3) for (let i = 0; i < 4; i++) star(r.x + r.w * (0.15 + i * 0.25), r.y + r.h * (0.2 + (i % 2) * 0.3), u * (2 + Math.sin(D.t * 3 + i)), C.white);
     g.restore();
     if (this.phase === 0) { const s = D.U * 6; R(this.cx - s * 4, this.gy + 3 * D.U, s * 2, s, C.yellow); R(this.cx - s * 4, this.gy + 3 * D.U, s * 2, D.U, C.k); }
@@ -97,9 +97,9 @@ export class Wash extends Game {
 export class Peek extends Game {
   id = "peek"; rounds = 3; items: Item[] = [];
   start() {
-    const pool = this.round === 0 ? ["lorry", "taxi", "car"] : shuffle(["lorry", "taxi", "bus", "moto", "van", "car"]).slice(0, 3);
+    const pool = this.round === 0 ? ["lorry", "taxi", "car"] : shuffle(["lorry", "taxi", "bus", "moto", "van", "car"]).filter((k, i, a) => !(k === "van" && a.indexOf("lorry") < 3 && a.indexOf("lorry") >= 0 && i < 3)).slice(0, 3);
     const cols = shuffle([C.red, C.yellow, C.blue, C.green, C.lav]);
-    this.items = shuffle(pool).map((k, i) => mkItem({ k, gcol: cols[i], vcol: k === "taxi" ? C.red : cols[(i + 2) % 5], open: 0, opening: false }));
+    this.items = shuffle(pool).map((k, i) => mkItem({ k, gcol: cols[i], vcol: k === "taxi" ? C.yellow : cols[(i + 2) % 5], open: 0, opening: false }));
     this.prompt();
   }
   prompt() { say("10"); }
@@ -121,12 +121,13 @@ export class Peek extends Game {
   }
   tick(dt: number) { for (const it of this.items) { ease(it, dt); if (it.opening) it.open = Math.min(1, it.open + dt * 1.5); } }
   paint() {
-    { const gy = backdrop("kampung", 0.5); SC.fence(gy, D.U); }
+    { const gy = backdrop("kampung", 0.5); if (!pic("bg-kampung")) SC.fence(gy, D.U); }
     for (const it of this.items) {
       const x = it.x - it.w / 2, y = it.y - it.h / 2 + it.h * 0.2;
-      garage(x, y, it.w, it.h * 0.8, it.gcol, it.open);
-      if (it.open > 0.3) veh(it.k, it.x + wx(it), y + it.h * 0.8 + bobY(it) * (it.open), it.u, it.vcol);
-      if (it.open < 0.2) { const q = D.U * 3; txt("?", it.x, y + it.h * 0.45, Math.max(24, it.h * 0.3), C.white); }
+      garage(x, y, it.w, it.h * 0.8, it.gcol, it.open, D.U, 1);
+      if (it.open > 0.15) veh(it.k, it.x + wx(it), y + it.h * 0.8 - it.h * 0.02 + bobY(it) * (it.open), it.u, it.vcol);
+      garage(x, y, it.w, it.h * 0.8, it.gcol, it.open, D.U, 2);
+      if (it.open < 0.2) { const q = D.U * 3; txt("?", it.x, y + it.h * 0.45, Math.max(24, it.h * 0.3), "#8C7B6E"); }
     }
   }
 }
@@ -161,8 +162,7 @@ export class ColourPark extends Game {
   }
   tick(dt: number) { if (this.drag !== this.car) ease(this.car, dt, 5); this.car.wig = Math.max(0, this.car.wig - dt); }
   paint() {
-    R(0, 0, D.W, D.H, C.road); SC.carparkTop(); const u = D.U;
-    for (let x = 0; x < D.W; x += u * 12) R(x, D.H * 0.55, u * 6, u, C.white);
+    const u = D.U; if (!cover("bg-carpark")) { R(0, 0, D.W, D.H, C.road); SC.carparkTop(); for (let x = 0; x < D.W; x += u * 12) R(x, D.H * 0.55, u * 6, u, C.white); }
     for (const s of this.spots) {
       const x = s.x - s.w / 2, y = s.y - s.h / 2;
       R(x, y, s.w, s.h, COLS[s.c]); R(x + u * 2, y + u * 2, s.w - 4 * u, s.h - 4 * u, "rgba(255,255,255,.35)");
@@ -195,10 +195,11 @@ export class Light extends Game {
     road(gy + u * 4, rh, this.carX * D.W * 2); SC.zebra(D.W * 0.66, gy + u * 4, rh, u);
     // light
     const lx = D.W * 0.5, lw = Math.max(40, u * 12), lh = lw * 2.6, ly = gy - lh - u * 10;
-    R(lx - u, ly + lh, u * 2, gy + u * 4 - ly - lh, C.k); box(lx - lw / 2, ly, lw, lh, C.k, u, C.k);
+    const tl = pic("traffic-light"); if (tl) { const th = lh * 1.45, tw = th * tl.naturalWidth / tl.naturalHeight; g.drawImage(tl, lx - tw / 2, gy + u * 4 - th, tw, th); } else { R(lx - u, ly + lh, u * 2, gy + u * 4 - ly - lh, C.k); box(lx - lw / 2, ly, lw, lh, C.k, u, C.k); }
     const cols = [[C.red, "#8a6862"], [C.yellow, "#8f8364"], [C.green, "#5d7f7b"]];
     const on = [2, 1, 0][this.state];
-    for (let i = 0; i < 3; i++) pcircS(lx, ly + lh * (0.18 + i * 0.32), lw * 0.3, i === 0 ? (on === 0 ? "#E07A6E" : "#7c6460") : i === 1 ? (on === 1 ? C.yellow : "#8a815f") : on === 2 ? "#8CD3A0" : "#5d7a6e");
+    if (tl) { const th = lh * 1.45, tw = th * tl.naturalWidth / tl.naturalHeight, top = gy + u * 4 - th, k = ["lamp-red", "lamp-amber", "lamp-green"][on], cy = top + th * LAMPY[on], rr = tw * 0.23; const lp = pic(k); if (lp) g.drawImage(lp, lx - rr, cy - rr, rr * 2, rr * 2); }
+    else for (let i = 0; i < 3; i++) pcircS(lx, ly + lh * (0.18 + i * 0.32), lw * 0.3, i === 0 ? (on === 0 ? "#E07A6E" : "#7c6460") : i === 1 ? (on === 1 ? C.yellow : "#8a815f") : on === 2 ? "#8CD3A0" : "#5d7a6e");
     R(D.W * 0.88, gy + u * 4, u, rh, C.white); for (let i = 0; i < 4; i++) R(D.W * 0.88 + u, gy + u * 4 + i * rh / 4, u * 3, rh / 8, i % 2 ? C.k : C.white);
     veh("car", this.carX * D.W, gy + u * 4 + rh * 0.65, this.u, C.blue);
     const pr = this.pedal, pressed = this.hold;
@@ -207,6 +208,7 @@ export class Light extends Game {
 }
 function pcircS(x: number, y: number, r: number, c: string) { g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
 
+const LAMPY = [0.215, 0.43, 0.65]; // lamp centres as a fraction of the painted traffic-light height (measured)
 // 6. Build My Car ---------------------------------------------------------
 export class Build extends Game {
   id = "build"; rounds = 3; stage = 0; wheels = 0; piece: Item = mkItem(); u = 4; cx = 0; gy = 0; drive = 0; goBtn: any; col = C.red;
@@ -245,13 +247,14 @@ export class Build extends Game {
     const p = this.piece, s = p.w;
     if (this.stage < 3) {
       btnBox(p.x - s / 2 + wx(p), p.y - s / 2, s, s, C.cream);
-      const pu = Math.max(2, Math.floor(s / 30));
+      const pu = Math.max(2, s / 25);
       if (this.stage === 0) veh("build", p.x + wx(p), p.y + s * 0.15, pu, this.col, { body: true });
-      if (this.stage === 1) { shape("circle", p.x + wx(p), p.y, s * 0.25, C.k, pu); shape("circle", p.x + wx(p), p.y, s * 0.12, C.grey, pu); }
-      if (this.stage === 2) veh("build", p.x + wx(p), p.y + s * 0.3, pu, this.col, { roof: true });
+      if (this.stage === 1 && !wheelIcon(p.x + wx(p), p.y, s * 0.36)) { shape("circle", p.x + wx(p), p.y, s * 0.25, C.k, pu); shape("circle", p.x + wx(p), p.y, s * 0.12, C.grey, pu); }
+      if (this.stage === 2) veh("build", p.x + wx(p), p.y + s * 0.55, pu, this.col, { roof: true });
     } else if (!this.drive) {
-      const b = this.goBtn; iconBtn(b, C.green, () => { ptri(b.x + b.w * 0.3, b.y + b.h * 0.2, b.w * 0.4, b.h * 0.6, C.white); });
+      const b = this.goBtn; iconBtn(b, C.green, () => { if (fitPic("icon-play", b.x + b.w * 0.12, b.y + b.h * 0.12, b.w * 0.76, b.h * 0.76)) return; ptri(b.x + b.w * 0.3, b.y + b.h * 0.2, b.w * 0.4, b.h * 0.6, C.white); });
     }
   }
 }
 import { ptri } from "./core";
+import { wheelIcon } from "./art";

@@ -1,7 +1,10 @@
 import { moon } from "./scenes";
 import { cur } from "./core";
 import { heart, g, D, C, R, MIN, hit, Rect, Scene, Pt, go, resize, loop, sfx, say, box, txt, star, fullscreen, ptri, pcirc } from "./core";
-import { veh, place, garage, shape, btnBox, speakerIcon, backdrop, homeIcon, whenArt } from "./art";
+import { pic } from "./art";
+/** Sylphy's painted frame over each hub tile */
+function tileFrame(x: number, y: number, w: number, h: number) { const im = pic("tile-frame"); if (im) g.drawImage(im, x - w * 0.03, y - h * 0.03, w * 1.06, h * 1.06); }
+import { veh, place, garage, shape, btnBox, speakerIcon, backdrop, homeIcon, whenArt, cover, fitPic } from "./art";
 import { setHome, drizzle } from "./game";
 import { S, setLang, setMute, setMusic, setRain, unlock } from "./audio";
 import { Beep, Wash, Peek, ColourPark, Light, Build } from "./games1";
@@ -58,10 +61,10 @@ class Hub implements Scene {
   update(dt: number) { this.t += dt; this.hWig = Math.max(0, this.hWig - dt); this.hHint = Math.max(0, this.hHint - dt); if (this.hHold) { this.hh += dt; if (this.hh >= 2) { this.hHold = false; this.hh = 0; sfx.ding(); location.href = "https://lhcars.my/"; } } if (this.holding) { this.hold += dt; if (this.hold >= 3) { this.holding = false; this.hold = 0; this.parent = true; sfx.ding(); say("x_parent"); } } }
   draw() {
     const u = D.U; R(0, 0, D.W, D.H, C.bg);
-    backdrop("kampung", 0.94);
+    if (!cover("bg-hub")) backdrop("kampung", 0.94);
     txt("LITTLE RACERS", D.W / 2, this.lang.y + this.lang.h / 2, Math.min(34, (D.W - this.lang.w * 2 - u * 8) / 13), C.yellow);
     for (const a of this.ages) { const r = a.r; pcirc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, C.k); pcirc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - u, C.white); txt(String(a.a), r.x + r.w / 2, r.y + r.h / 2 + 2, r.h * 0.5, C.red, "center", false); }
-    this.btns.forEach((b, i) => { const r = b.r, p = this.pressed === i; btnBox(r.x, r.y, r.w, r.h, b.d.col, p); g.save(); g.beginPath(); g.rect(r.x + u, r.y + u, r.w - 2 * u, r.h - 2 * u); g.clip(); b.d.icon(r.x + (p ? u : 0), r.y + (p ? u : 0), r.w); g.restore(); });
+    this.btns.forEach((b, i) => { const r = b.r, p = this.pressed === i; btnBox(r.x, r.y, r.w, r.h, b.d.col, p); g.save(); g.beginPath(); g.rect(r.x + u, r.y + u, r.w - 2 * u, r.h - 2 * u); g.clip(); b.d.icon(r.x + (p ? u : 0), r.y + (p ? u : 0), r.w); g.restore(); { const o = p ? u : 0; tileFrame(r.x + o, r.y + o, r.w, r.h); } });
     const l = this.lang; btnBox(l.x, l.y, l.w, l.h, C.white); txt(S.lang === "en" ? "EN" : "BM", l.x + l.w / 2, l.y + l.h / 2, l.h * 0.32, S.lang === "en" ? C.blue : C.red);
     { const hm = this.home, wx = this.hWig > 0 ? Math.sin(D.t * 30) * u * 1.5 : 0, x = hm.x + wx; btnBox(x, hm.y, hm.w, hm.h, C.cream);
       const ic = hm.h * 0.62; homeIcon(x + u * 2, hm.y + (hm.h - ic) / 2, ic); txt("HOME", x + u * 3 + ic + (hm.w - ic - u * 5) / 2, hm.y + hm.h / 2, Math.min(hm.h * 0.2, (hm.w - ic - u * 6) / 4.4), C.k, "center", false);

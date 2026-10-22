@@ -1,15 +1,17 @@
 // per-game storybook scenery (art-direction.md). static or very slow motion only.
 import { g, D, C, R, sk, skLine, rrPts, elPts, polyPts, grad, mix, seed, rand } from "./core";
-import { face, place, palm } from "./art";
+import { face, place, palm, cover, prop, pic } from "./art";
 const lw = (u: number) => Math.max(1.2, u * 0.55);
 /** crescent moon without a visible cut-out disc: clip away the bite instead of painting over it */
 export function moon(cx: number, cy: number, r: number, col: string) {
+  { const im = pic("moon"); if (im) { g.drawImage(im, cx - r * 1.5, cy - r * 1.5, r * 3, r * 3); return; } }
   g.save(); g.beginPath(); g.rect(cx - r * 2, cy - r * 2, r * 4, r * 4); g.arc(cx + r * 0.45, cy - r * 0.3, r * 0.85, 0, Math.PI * 2, true); g.clip("evenodd");
   const gl = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.8); gl.addColorStop(0, "rgba(242,216,148,.25)"); gl.addColorStop(1, "rgba(242,216,148,0)"); g.fillStyle = gl; g.beginPath(); g.arc(cx, cy, r * 1.8, 0, 7); g.fill();
   g.fillStyle = col; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill(); g.restore();
 }
 /** round leafy tree, optional face (the "cheering crowd of trees") */
 export function tree(x: number, gy: number, u: number, col = "#8DB07A", o: { face?: boolean; bob?: number; night?: boolean } = {}) {
+  if (!o.night && prop("tree", x, gy, 21 * u)) return;
   const b = o.bob ? Math.sin(D.t * 1.2 + o.bob) * u * 0.6 : 0, trunk = o.night ? "#5b4a3a" : "#A07F5E";
   sk(rrPts(x - u * 1.2, gy - 9 * u, u * 2.4, 9 * u, u * 0.6), trunk, lw(u));
   sk(elPts(x, gy - 13 * u + b, 7 * u, 6.5 * u, 16), col, lw(u));
@@ -18,6 +20,7 @@ export function tree(x: number, gy: number, u: number, col = "#8DB07A", o: { fac
 }
 /** rain tree: wide umbrella canopy with soft pink puffs */
 export function rainTree(x: number, gy: number, u: number) {
+  if (prop("rain-tree", x, gy, 31 * u)) return;
   skLine([[x, gy], [x - u, gy - 10 * u], [x + u * 0.5, gy - 20 * u]], u * 2.6); g.strokeStyle = "#A07F5E"; g.lineWidth = u * 1.6; g.beginPath(); g.moveTo(x, gy); g.lineTo(x - u, gy - 10 * u); g.lineTo(x + u * 0.5, gy - 20 * u); g.stroke();
   skLine([[x - u, gy - 12 * u], [x - 9 * u, gy - 20 * u]], u * 1.4); skLine([[x, gy - 14 * u], [x + 10 * u, gy - 21 * u]], u * 1.4);
   const pts: [number, number][] = []; for (let i = 0; i <= 20; i++) { const a = Math.PI + (i / 20) * Math.PI; pts.push([x + Math.cos(a) * 24 * u, gy - 20 * u + Math.sin(a) * 9 * u - (i % 2 ? 0 : u * 1.4)]); }
@@ -28,6 +31,7 @@ export function rainTree(x: number, gy: number, u: number) {
 }
 /** row of taman terrace houses on the horizon */
 export function terrace(x0: number, x1: number, gy: number, u: number) {
+  { const im = pic("house-terrace"); if (im) { const h = 16 * u, w = h * im.naturalWidth / im.naturalHeight; for (let x = x0; x < x1; x += w * 0.98) g.drawImage(im, x, gy - h, w, h); return; } }
   const w = 14 * u, cols = [C.cream, "#F3E1C7", "#E6EEDF", "#F2DCD4"];
   for (let i = 0, x = x0; x < x1; i++, x += w) {
     sk(rrPts(x, gy - 11 * u, w, 11 * u, u * 0.5), cols[i % 4], lw(u));
@@ -36,9 +40,11 @@ export function terrace(x0: number, x1: number, gy: number, u: number) {
   }
   R(0, gy - u * 0.2, D.W, u * 2.2, "#D9D3C6"); skLine([[0, gy + u * 2], [D.W, gy + u * 2]], lw(u) * 0.7);
 }
-export function lampPost(x: number, gy: number, u: number) { skLine([[x, gy], [x, gy - 20 * u], [x + 4 * u, gy - 21 * u]], u * 1.1); sk(elPts(x + 4.5 * u, gy - 20 * u, 1.6 * u, 1.1 * u, 10), "#F6DE8A", lw(u) * 0.7); }
+export function lampPost(x: number, gy: number, u: number) {
+  if (prop("lamp-post", x + 2 * u, gy, 23 * u)) return; skLine([[x, gy], [x, gy - 20 * u], [x + 4 * u, gy - 21 * u]], u * 1.1); sk(elPts(x + 4.5 * u, gy - 20 * u, 1.6 * u, 1.1 * u, 10), "#F6DE8A", lw(u) * 0.7); }
 /** kampung yard: low wooden fence + hibiscus bush */
 export function fence(gy: number, u: number) {
+  { const im = pic("fence"); if (im) { const h = 9 * u, w = h * im.naturalWidth / im.naturalHeight; for (let x = -w * 0.1; x < D.W; x += w * 0.96) g.drawImage(im, x, gy - h, w, h); if (prop("hedge", D.W * 0.04, gy + u, 8 * u)) prop("hedge", D.W * 0.96, gy + u, 8 * u); return; } }
   const { W } = D; R(0, gy - 6 * u, W, u * 1.2, "#C9A27C"); R(0, gy - 3 * u, W, u * 1.2, "#C9A27C");
   for (let x = u * 2; x < W; x += 6 * u) sk(polyPts([[x, gy], [x, gy - 7 * u], [x + 1.2 * u, gy - 8.4 * u], [x + 2.4 * u, gy - 7 * u], [x + 2.4 * u, gy]], 1), "#D8B48E", lw(u) * 0.7);
   for (const bx of [W * 0.02, W * 0.95]) { sk(elPts(bx, gy - 3 * u, 6 * u, 4.5 * u, 14), "#86AE76", lw(u)); for (let k = 0; k < 4; k++) { g.fillStyle = C.red; g.beginPath(); g.arc(bx - 3 * u + k * 2 * u, gy - 4 * u - (k % 2) * 2 * u, u * 0.9, 0, 7); g.fill(); } }
@@ -52,9 +58,11 @@ export function mall(gy: number, u: number) {
   g.fillStyle = "#D6D1C7"; g.fillRect(0, gy, W, D.H - gy); seed(W, 11); g.fillStyle = "rgba(120,110,100,.12)"; for (let i = 0; i < 60; i++) { g.beginPath(); g.arc(rand() * W, gy + rand() * (D.H - gy), u * 0.5, 0, 7); g.fill(); }
   skLine([[0, gy], [W, gy]], lw(u));
 }
-export function zebra(x: number, y: number, h: number, u: number) { const s = h / 7; for (let i = 0; i < 6; i++) R(x - 5 * u, y + s * (i + 0.5), 10 * u, s * 0.55, "rgba(255,255,255,.95)"); }
+export function zebra(x: number, y: number, h: number, u: number) {
+  { const im = pic("zebra"); if (im) { g.drawImage(im, x - 6 * u, y, 12 * u, h); return; } } const s = h / 7; for (let i = 0; i < 6; i++) R(x - 5 * u, y + s * (i + 0.5), 10 * u, s * 0.55, "rgba(255,255,255,.95)"); }
 /** cosy workshop wall with pegboard tools and a wooden floor */
 export function workshop(gy: number) {
+  if (cover("bg-workshop")) return gy;
   const { W, H, U: u } = D;
   g.fillStyle = grad("#EBDCC5", 0, gy); g.fillRect(0, 0, W, gy);
   const pw = Math.min(W * 0.5, 70 * u), px = W * 0.5 - pw / 2, py = gy * 0.18, ph = gy * 0.5;
@@ -77,6 +85,7 @@ export function workshop(gy: number) {
 }
 /** toll plaza canopy across several booths */
 export function tollPlaza(tx: number, gy: number, u: number) {
+  if (pic("toll-booth")) { for (const dx of [-24, 24]) prop("toll-booth", tx + dx * u, gy, 20 * u); return; }
   for (const dx of [-24, 24]) place("toll", tx + dx * u, gy - 2 * u, u * 0.9);
   sk(rrPts(tx - 36 * u, gy - 27 * u, 72 * u, 4 * u, u), "#E8AE7E", lw(u)); for (const dx of [-34, 34]) sk(rrPts(tx + dx * u - u, gy - 23 * u, 2 * u, 23 * u, u * 0.5), C.grey, lw(u));
 }
@@ -120,12 +129,14 @@ export function raceCrowd(gy: number, u: number) {
 }
 /** small town shophouses for the helper trucks */
 export function shophouses(x0: number, x1: number, gy: number, u: number) {
+  { const im = pic("shophouses"); if (im) { const h = 20 * u, w = h * im.naturalWidth / im.naturalHeight; for (let x = x0; x + w * 0.5 < x1; x += w * 0.98) g.drawImage(im, x, gy - h, w, h); return; } }
   const w = 12 * u, cols = ["#F3E1C7", "#E6EEDF", "#F2DCD4", "#E4E0F0"];
   for (let i = 0, x = x0; x + w <= x1; i++, x += w) { sk(rrPts(x, gy - 18 * u, w, 18 * u, u * 0.4), cols[i % 4], lw(u)); sk(rrPts(x - u * 0.5, gy - 10 * u, w + u, 2.4 * u, u * 0.5), [C.green, C.red, C.blue][i % 3], lw(u) * 0.7);
     sk(rrPts(x + 2 * u, gy - 16 * u, 3 * u, 4 * u, u * 0.4), C.win, lw(u) * 0.6); sk(rrPts(x + 7 * u, gy - 16 * u, 3 * u, 4 * u, u * 0.4), C.win, lw(u) * 0.6); sk(rrPts(x + 3 * u, gy - 7 * u, 6 * u, 7 * u, u * 0.4), "#C9B79C", lw(u) * 0.6); }
 }
 /** highway signboard to the kampung */
 export function kampungSign(x: number, gy: number, u: number, label: string) {
+  if (prop("sign-kampung", x, gy, 24 * u)) { g.fillStyle = "#5a4636"; g.font = `600 ${Math.round(3 * u)}px Fredoka, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(label, x, gy - 18.5 * u); return; }
   skLine([[x - 6 * u, gy], [x - 6 * u, gy - 14 * u]], u); skLine([[x + 6 * u, gy], [x + 6 * u, gy - 14 * u]], u);
   sk(rrPts(x - 9 * u, gy - 21 * u, 18 * u, 8 * u, u), "#7FB7B0", lw(u)); g.fillStyle = "#FFFFFF"; g.font = `600 ${Math.round(3.2 * u)}px Fredoka, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(label, x, gy - 17 * u);
 }

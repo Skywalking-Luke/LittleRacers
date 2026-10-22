@@ -101,7 +101,9 @@ export function stepParts(dt: number) {
   for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 160 * dt; p.vx *= 0.99; if (p.life <= 0 || p.y > D.H + 40) parts.splice(i, 1); }
 }
 export function drawParts() { for (const p of parts) { if (p.star) star(p.x, p.y, p.s * 1.4, p.c); else { g.fillStyle = p.c; g.beginPath(); g.arc(p.x, p.y, p.s * 0.6, 0, Math.PI * 2); g.fill(); } } }
+export const HOOK: { star: ((cx: number, cy: number, r: number, c: string) => boolean) | null } = { star: null };
 export function star(cx: number, cy: number, r: number, c: string, edge = true) {
+  if (HOOK.star && HOOK.star(cx, cy, r, c)) return;
   const path = () => { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.48 : r; g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.closePath(); };
   path(); if (edge) { g.lineWidth = Math.max(3, r / 5); g.strokeStyle = C.k; g.lineJoin = "round"; g.stroke(); }
   g.fillStyle = c; g.fill();

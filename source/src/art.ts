@@ -1,16 +1,37 @@
-import { g, D, C, R, pcirc, ptri, box, txt, star, sk, skLine, rrPts, elPts, polyPts, grad, mix, seed, rand } from "./core";
+import { HOOK, g, D, C, R, pcirc, ptri, box, txt, star, sk, skLine, rrPts, elPts, polyPts, grad, mix, seed, rand } from "./core";
 import SZ from "./artsizes.json";
 export const VW: Record<string, [number, number]> = {
   car: [18, 11], taxi: [18, 12], bus: [28, 15], lorry: [28, 14], fire: [28, 14], amb: [22, 13],
   tow: [26, 13], jeep: [18, 13], train: [40, 13], police: [18, 12], moto: [14, 11], van: [22, 13], build: [24, 12],
 };
-const IW: Record<string, number> = { car: 18, van: 21, lorry: 25, bus: 32, moto: 15 };
+const IW: Record<string, number> = { car: 18, van: 21, lorry: 25, bus: 32, moto: 15, fire: 26, amb: 22, tow: 26, taxi: 18 };
+for (const k in IW) if (!(SZ as any)[k]) delete IW[k];
+VW.build = [24, +(24 * (SZ as any).car[1] / (SZ as any).car[0]).toFixed(1)];
 for (const k in IW) { const z = (SZ as any)[k]; VW[k] = [IW[k], +(IW[k] * z[1] / z[0]).toFixed(1)]; }
 /** Sylphy's painted vehicles (self-hosted WebP, mirrored to face right). recoloured per colour on demand. */
 const IMG: Record<string, HTMLImageElement> = {}, TINT: Record<string, HTMLCanvasElement> = {}, BASEHUE: Record<string, number> = {};
 const rgb2hsl = (r: number, g2: number, b: number) => { r /= 255; g2 /= 255; b /= 255; const mx = Math.max(r, g2, b), mn = Math.min(r, g2, b), l = (mx + mn) / 2; if (mx === mn) return [0, 0, l]; const d = mx - mn, s2 = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); const h = mx === r ? (g2 - b) / d + (g2 < b ? 6 : 0) : mx === g2 ? (b - r) / d + 2 : (r - g2) / d + 4; return [h * 60, s2, l]; };
 const hsl2rgb = (h: number, s2: number, l: number) => { const k = (n: number) => (n + h / 30) % 12, a2 = s2 * Math.min(l, 1 - l), f = (n: number) => l - a2 * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); return [f(0) * 255, f(8) * 255, f(4) * 255]; };
 let onArt: (() => void) | null = null; export function whenArt(f: () => void) { onArt = f; }
+const PARTS = ["car_body", "car_roof", "car_w0", "car_w1", "car_w2", "wheel"];
+for (const k of PARTS) { const im = new Image(); im.onload = () => { IMG[k] = im; onArt && onArt(); }; im.src = "/LittleRacers/art/" + k + ".webp"; }
+import AL from "./artlist.json";
+for (const k in AL as any) { const im = new Image(); im.onload = () => { IMG[k] = im; onArt && onArt(); }; im.src = "/LittleRacers/art/" + k + ".webp"; }
+/** a painted asset by name if it has loaded (else null -> caller falls back to code drawing) */
+export const pic = (k: string): HTMLImageElement | null => IMG[k] || null;
+/** draw an opaque painted background covering the screen (centre-cropped) */
+export function cover(k: string) { const im = IMG[k]; if (!im) return false; const s = Math.max(D.W / im.naturalWidth, D.H / im.naturalHeight), w = im.naturalWidth * s, h = im.naturalHeight * s; g.drawImage(im, (D.W - w) / 2, (D.H - h) / 2, w, h); return true; }
+/** bottom-centred painted prop of height h (px) standing on gy */
+export function prop(k: string, cx: number, gy: number, h: number) { const im = IMG[k]; if (!im) return false; const w = h * im.naturalWidth / im.naturalHeight; g.drawImage(im, cx - w / 2, gy - h, w, h); return true; }
+/** painted asset fitted (contain) into a box, centred */
+export function fitPic(k: string, x: number, y: number, w: number, h: number, src?: CanvasImageSource) { const im = IMG[k]; if (!im) return false; const a = im.naturalWidth / im.naturalHeight, ww = Math.min(w, h * a), hh = ww / a; g.drawImage(src || im, x + (w - ww) / 2, y + (h - hh) / 2, ww, hh); return true; }
+const MUL: Record<string, HTMLCanvasElement> = {};
+/** neutral cream asset recoloured by multiply, alpha kept */
+export function tmul(k: string, col: string): CanvasImageSource { const im = IMG[k], key = k + col; if (MUL[key]) return MUL[key]; const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext("2d")!; x.drawImage(im, 0, 0); x.globalCompositeOperation = "multiply"; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = "destination-in"; x.drawImage(im, 0, 0); return (MUL[key] = c); }
+// painted star for the warm yellow stars (score, rewards, bedtime count); other colours keep the code star
+HOOK.star = (cx, cy, r, c) => { const im = IMG.star; if (!im || !/^(#F2D894|#E8C25A|#F6DE8A)$/i.test(c) && c !== C.yellow) return false; g.drawImage(im, cx - r * 1.15, cy - r * 1.15, r * 2.3, r * 2.3); return true; };
+const BED: Record<string, [string, number]> = { jeep: ["bedtime-jeep", 20], bus: ["bedtime-bus", 32], lorry: ["bedtime-lorry", 25], train: ["bedtime-train", 44], moto: ["bedtime-motorbike", 15] };
+export function wheelIcon(cx: number, cy: number, r: number) { if (IMG.wheel) g.drawImage(IMG.wheel, cx - r, cy - r, 2 * r, 2 * r); return !!IMG.wheel; }
 for (const k in IW) { const im = new Image(); im.onload = () => { IMG[k] = im; onArt && onArt(); }; im.src = "/LittleRacers/art/" + k + ".webp"; }
 function tinted(k: string, col: string): CanvasImageSource {
   const im = IMG[k], key = k + col; if (TINT[key]) return TINT[key];
@@ -25,7 +46,7 @@ function tinted(k: string, col: string): CanvasImageSource {
 }
 export type VOpt = { flip?: boolean; lights?: boolean; flash?: boolean; body?: boolean; wheels?: number; roof?: boolean; ghost?: boolean };
 /** bedtime sets this so vehicles get sleepy half-closed eyes */
-export const ART = { sleepy: false };
+export const ART = { sleepy: false, bed: false };
 const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
 /** one friendly eye: white, big pupil looking forward, slow blink */
 export function eye(x: number, y: number, r: number, ph = 0) {
@@ -56,8 +77,14 @@ export function veh(kind: string, cx: number, gy: number, u: number, col: string
   const siren = (ix: number, iy: number) => { B(ix, iy, 4.2, 1.7, "#F6F1E6", 0.8); const on = o.flash ? Math.sin(D.t * 4) > 0 : true; g.fillStyle = on ? "#E58C8C" : "#b88"; g.beginPath(); g.arc(X(ix + 1.1), Y(iy + 0.85), u * 0.6, 0, 7); g.fill(); g.fillStyle = on ? "#8DB3E2" : "#89a"; g.beginPath(); g.arc(X(ix + 3.1), Y(iy + 0.85), u * 0.6, 0, 7); g.fill(); };
   // soft ground shadow
   g.fillStyle = "rgba(60,50,40,.13)"; g.beginPath(); g.ellipse(cx, gy + u * 0.2, w * u * 0.5, u * 1.1, 0, 0, 7); g.fill();
+  if ((ART.bed || kind === "jeep" || kind === "train") && BED[kind] && IMG[BED[kind][0]]) {
+    const im = IMG[BED[kind][0]], bw = BED[kind][1] * u, bh = bw * im.naturalHeight / im.naturalWidth;
+    g.drawImage(im, cx - bw / 2, gy - bh, bw, bh);
+    if (o.lights) { const lx = cx + bw * 0.48, ly = gy - bh * 0.35, gr = g.createRadialGradient(lx, ly, u, lx + 4 * u, ly, u * 8); gr.addColorStop(0, "rgba(255,240,160,.6)"); gr.addColorStop(1, "rgba(255,240,160,0)"); g.fillStyle = gr; g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 9 * u, ly - 3 * u); g.lineTo(lx + 9 * u, ly + 3 * u); g.closePath(); g.fill(); }
+    g.restore(); return { w: bw, h: bh };
+  }
   if (IMG[kind] && IW[kind]) {
-    g.drawImage(tinted(kind, col), x0, y0, w * u, h * u);
+    g.drawImage(["fire", "amb", "tow", "taxi"].includes(kind) ? IMG[kind] : tinted(kind, col), x0, y0, w * u, h * u);
     if (o.lights) { const lx = x0 + w * u * 0.97, ly = y0 + h * u * 0.62, gr = g.createRadialGradient(lx, ly, u, lx + 4 * u, ly, u * 8); gr.addColorStop(0, "rgba(255,240,160,.7)"); gr.addColorStop(1, "rgba(255,240,160,0)"); g.fillStyle = gr; g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 9 * u, ly - 3 * u); g.lineTo(lx + 9 * u, ly + 3 * u); g.closePath(); g.fill(); }
     g.restore(); return { w: w * u, h: h * u };
   }
@@ -97,6 +124,11 @@ export function veh(kind: string, cx: number, gy: number, u: number, col: string
     case "moto": W(3, 9, 1.9); W(11, 9, 1.9); B(3.5, 5, 8.5, 3, col, 1.4); skLine([[X(10.5), Y(5)], [X(11.4), Y(2.8)], [X(10.4), Y(2.4)]], lw * 1.2);
       B(5.4, 2.4, 3.2, 3.6, C.blue, 1.3); sk(elPts(X(7), Y(1.3), 1.7 * u, 1.5 * u, 12), col, lw); B(7, 0.8, 2.2, 1.2, C.win, 0.5); eye(X(8.1), Y(1.4), u * 0.5, ph); lamp(12.3, 5.6); break;
     case "build": {
+      if (IMG.car_body && IMG.car_roof && IMG.car_w2) {
+        const dw = w * u, dh = h * u, n = o.wheels || 0, L = (k: string) => g.drawImage(tinted(k, col), x0, y0, dw, dh);
+        if (n > 2) L("car_w2"); if (o.body) L("car_body"); if (n > 0) L("car_w0"); if (n > 1) L("car_w1"); if (n > 3) { g.save(); g.globalAlpha *= 0.9; L("car_w2"); g.restore(); }
+        if (o.roof) L("car_roof"); break;
+      }
       if (o.roof) { B(5, 0, 13, 6.4, col, 3); Win(6.8, 1.2, 4.6, 3.4); Win(12.2, 1.2, 4.6, 3.4); E(13, 3, 0.8); }
       if (o.body) { B(0, 4, 24, 6, col, 2.6); lamp(22.8, 5.8); tail(0.6, 5.8); if (o.roof) smile(21, 8.2, 1.6); }
       const ws = [3.5, 8.5, 15.5, 20.5];
@@ -112,6 +144,7 @@ export function sky(top = C.sky, bot = C.sky2) {
   cloud(W * 0.18 + Math.sin(D.t / 5) * 20, H * 0.12, U * 3); cloud(W * 0.75 + Math.cos(D.t / 6) * 20, H * 0.18, U * 2.5);
 }
 export function cloud(x: number, y: number, u: number) {
+  { const k = "cloud-" + (1 + (Math.round(Math.abs(y)) % 2)); if (IMG[k]) { g.drawImage(IMG[k], x - u, y - 3.5 * u, 16 * u, 8 * u); return; } }
   const pts: [number, number][] = []; const bumps: [number, number, number][] = [[2.5, 1.5, 2.6], [6, -0.8, 3.6], [10.2, 0.4, 3], [12.8, 2, 2]];
   g.fillStyle = "rgba(255,255,255,.95)"; g.beginPath(); for (const [bx, by, r] of bumps) { g.moveTo(x + (bx + r) * u, y + by * u); g.arc(x + bx * u, y + by * u, r * u, 0, Math.PI * 2); } g.fill();
   g.beginPath(); (g as any).roundRect ? (g as any).roundRect(x, y + 0.6 * u, 14 * u, 3.4 * u, 1.7 * u) : g.rect(x, y + 0.6 * u, 14 * u, 3.4 * u); g.fill();
@@ -131,11 +164,12 @@ export function road(y: number, h: number, scroll = 0) {
   skLine([[0, y], [W * 0.33, y + U * 0.2], [W * 0.66, y - U * 0.2], [W, y]], Math.max(1.2, U * 0.6)); skLine([[0, y + h], [W * 0.5, y + h + U * 0.2], [W, y + h]], Math.max(1.2, U * 0.6));
   const d = U * 10; g.fillStyle = "rgba(255,255,255,.9)"; for (let x = -((scroll % (d * 2)) + d * 2); x < W + d; x += d * 2) { g.beginPath(); (g as any).roundRect ? (g as any).roundRect(x, y + h / 2 - U / 2, d, U, U / 2) : g.rect(x, y + h / 2 - U / 2, d, U); g.fill(); }
 }
-export function sun(x: number, y: number, r: number) { const gr = g.createRadialGradient(x, y, r * 0.6, x, y, r * 2); gr.addColorStop(0, "rgba(255,236,170,.55)"); gr.addColorStop(1, "rgba(255,236,170,0)"); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * 2, 0, 7); g.fill(); sk(elPts(x, y, r, r, 18), C.yellow, Math.max(1.2, r * 0.06)); }
+export function sun(x: number, y: number, r: number) { if (IMG.sun) { g.drawImage(IMG.sun, x - r * 1.6, y - r * 1.6, r * 3.2, r * 3.2); return; } const gr = g.createRadialGradient(x, y, r * 0.6, x, y, r * 2); gr.addColorStop(0, "rgba(255,236,170,.55)"); gr.addColorStop(1, "rgba(255,236,170,0)"); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * 2, 0, 7); g.fill(); sk(elPts(x, y, r, r, 18), C.yellow, Math.max(1.2, r * 0.06)); }
 export function face(x: number, y: number, u: number, happy = true) { g.fillStyle = C.k; g.beginPath(); g.arc(x - 2.5 * u, y + u * 0.5, u * 0.7, 0, 7); g.arc(x + 2.5 * u, y + u * 0.5, u * 0.7, 0, 7); g.fill(); if (happy) { g.strokeStyle = C.k; g.lineWidth = Math.max(1, u * 0.7); g.lineCap = "round"; g.beginPath(); g.arc(x, y + u * 0.6, u * 2, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke(); } }
 
 // ---- places: (cx, ground y, u) ----
 export function place(kind: string, cx: number, gy: number, u: number) {
+  { const m: Record<string, [string, number]> = { home: ["house-stilt", 24], toll: ["toll-booth", 20] }; const q = m[kind]; if (q && prop(q[0], cx, gy, q[1] * u)) return; }
   const X = (i: number) => cx + i * u, Y = (i: number) => gy - i * u, lw = Math.max(1.2, u * 0.6);
   const B = (ix: number, iy: number, w: number, h: number, c: string, r = 1) => sk(rrPts(X(ix), Y(iy), w * u, h * u, r * u), c, lw);
   const Win = (ix: number, iy: number, w: number, h: number) => { B(ix, iy, w, h, C.win, 0.6); skLine([[X(ix + w / 2), Y(iy)], [X(ix + w / 2), Y(iy - h)]], lw * 0.6); };
@@ -167,16 +201,43 @@ export function place(kind: string, cx: number, gy: number, u: number) {
     case "toll": sk(rrPts(X(-6.5), Y(20.5), 15 * u, 3 * u, u), C.blue, lw); B(-3, 14, 7, 14, C.cream, 1.2); B(-1.4, 11.5, 3.8, 3.2, C.win, 0.6); B(-5.5, 17, 1, 17, C.grey, 0.4); break;
   }
 }
-export function garage(x: number, y: number, w: number, h: number, col: string, open = 0, u = D.U) {
-  const lw = Math.max(1.2, u * 0.8);
-  sk(polyPts([[x + w / 2, y - h * 0.32], [x + w + u * 1.5, y + u], [x - u * 1.5, y + u]], 3), mix(col, "#4A4A48", 0.15), lw);
-  sk(rrPts(x, y, w, h, u * 1.5), col, lw);
-  const ix = x + 3.5 * u, iy = y + 3.5 * u, iw = w - 7 * u, ih = h - 3.5 * u;
-  g.fillStyle = "#4b4560"; g.fillRect(ix, iy, iw, ih);
-  const dh = ih * (1 - open);
-  if (dh > 1) { sk(rrPts(ix, iy, iw, dh, u * 0.6), "#ECE8F4", Math.max(1, u * 0.5)); g.strokeStyle = "rgba(120,110,150,.45)"; g.lineWidth = Math.max(1, u * 0.4); g.beginPath(); for (let yy = 3 * u; yy < dh - u; yy += 3 * u) { g.moveTo(ix + u, iy + yy); g.lineTo(ix + iw - u, iy + yy); } g.stroke(); R(ix + iw / 2 - 1.5 * u, iy + dh - 1.6 * u, 3 * u, u * 0.8, "#9a92b0"); }
+export function garage(x: number, y: number, w: number, h: number, col: string, open = 0, u = D.U, layer = 0) {
+  if (IMG.garage && IMG["garage-door"]) { // Sylphy's painted garage; layer 1 = building + lit interior, 2 = roller door (drawn after the vehicle)
+    const im = IMG.garage, gw = w * 1.08, gh = gw * im.naturalHeight / im.naturalWidth, gx = x + w / 2 - gw / 2, gyy = y + h - gh;
+    const ox = gx + gw * 0.143, oy = gyy + gh * 0.45, ow = gw * 0.714, oh = gh * 0.515, e = open * open * (3 - 2 * open);
+    if (layer !== 2) g.drawImage(im, gx, gyy, gw, gh);
+    if (layer !== 1 && e < 1) { g.save(); g.beginPath(); g.rect(ox, oy, ow, oh); g.clip(); g.drawImage(IMG["garage-door"], ox, oy - e * oh, ow, oh); g.restore(); }
+    return;
+  }
+  if (layer === 2) return;
+  const lw = Math.max(1.2, u * 0.7), ink = "rgba(74,64,58,.85)", e = open * open * (3 - 2 * open);
+  // walls
+  sk(rrPts(x, y, w, h, u * 1.2), mix(col, "#FFF8EC", 0.45), lw, ink);
+  // warm lit interior with plank texture and a hanging lamp glow
+  const ix = x + 3 * u, iy = y + 3 * u, iw = w - 6 * u, ih = h - 3 * u;
+  const gr = g.createLinearGradient(0, iy, 0, iy + ih); gr.addColorStop(0, "#F3D29C"); gr.addColorStop(1, "#E2B47C"); g.fillStyle = gr; g.fillRect(ix, iy, iw, ih);
+  g.strokeStyle = "rgba(150,100,60,.18)"; g.lineWidth = Math.max(1, u * 0.3); g.beginPath(); for (let xx = ix + iw / 7; xx < ix + iw; xx += iw / 7) { g.moveTo(xx, iy); g.lineTo(xx, iy + ih); } g.stroke();
+  const lg = g.createRadialGradient(ix + iw / 2, iy + u * 2, u, ix + iw / 2, iy + u * 2, iw * 0.6); lg.addColorStop(0, "rgba(255,244,200,.75)"); lg.addColorStop(1, "rgba(255,244,200,0)"); g.fillStyle = lg; g.fillRect(ix, iy, iw, ih);
+  g.fillStyle = "rgba(120,80,50,.18)"; g.fillRect(ix, iy + ih - u * 1.6, iw, u * 1.6);
+  // roller door: slats, rolls up softly into a drum at the top
+  const dh = ih * (1 - e);
+  if (dh > 1) {
+    sk(rrPts(ix, iy, iw, dh, u * 0.5), "#F1ECE2", Math.max(1, u * 0.45), ink);
+    g.strokeStyle = "rgba(140,125,110,.45)"; g.lineWidth = Math.max(1, u * 0.35); g.beginPath();
+    for (let yy = dh - 2.4 * u; yy > u; yy -= 2.4 * u) { g.moveTo(ix + u * 0.8, iy + yy); g.lineTo(ix + iw - u * 0.8, iy + yy); } g.stroke();
+    sk(rrPts(ix + iw / 2 - 2 * u, iy + dh - 1.8 * u, 4 * u, u * 0.9, u * 0.4), "#B8AC9C", Math.max(1, u * 0.3), ink);
+  }
+  sk(rrPts(ix - u * 0.5, iy - u * 1.2, iw + u, u * 2, u), mix(col, "#7A6A5E", 0.25), lw, ink);
+  // tiled roof with scalloped shingles
+  const rx = x - u * 2, rw = w + u * 4, peak = y - h * 0.34, base = y + u * 0.6;
+  sk(polyPts([[x + w / 2, peak], [rx + rw, base], [rx, base]], 3), mix(col, "#C0755A", 0.35), lw * 1.1, ink);
+  g.save(); g.beginPath(); g.moveTo(x + w / 2, peak); g.lineTo(rx + rw, base); g.lineTo(rx, base); g.closePath(); g.clip();
+  g.strokeStyle = "rgba(90,60,45,.35)"; g.lineWidth = Math.max(1, u * 0.35); const st = Math.max(3, (base - peak) / 5), tw = st * 1.4;
+  for (let r = 1, yy = peak + st; yy < base; yy += st, r++) { g.beginPath(); for (let xx = rx + (r % 2) * tw / 2 - tw; xx < rx + rw + tw; xx += tw) { g.moveTo(xx, yy); g.arc(xx + tw / 2, yy, tw / 2, Math.PI, 0, true); } g.stroke(); }
+  g.restore();
 }
 export function shape(kind: string, cx: number, cy: number, r: number, col: string, u = D.U, hole = false) {
+  { const k = (hole ? "hole-" : "shape-") + kind; if (IMG[k]) { const s2 = r * 2.4; g.drawImage(hole ? IMG[k] : tmul(k, col), cx - s2 / 2, cy - s2 / 2, s2, s2); return; } }
   const pts = kind === "circle" ? elPts(cx, cy, r, r, 18) : kind === "square" ? rrPts(cx - r, cy - r, 2 * r, 2 * r, r * 0.18) : polyPts([[cx, cy - r * 1.1], [cx + r * 1.15, cy + r * 0.9], [cx - r * 1.15, cy + r * 0.9]], 3);
   if (hole) { sk(pts, "rgba(43,33,64,.30)", 0); g.setLineDash([u * 1.5, u * 1.2]); g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = Math.max(1, u * 0.6); smoothStroke(pts); g.setLineDash([]); }
   else sk(pts, col, Math.max(1.4, u * 0.9));
@@ -184,15 +245,18 @@ export function shape(kind: string, cx: number, cy: number, r: number, col: stri
 function smoothStroke(pts: [number, number][]) { const n = pts.length; g.beginPath(); g.moveTo((pts[n - 1][0] + pts[0][0]) / 2, (pts[n - 1][1] + pts[0][1]) / 2); for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n]; g.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); } g.closePath(); g.stroke(); }
 export function btnBox(x: number, y: number, w: number, h: number, col: string, pressed = false) {
   const u = D.U, o = pressed ? u : 0; g.fillStyle = "rgba(74,60,50,.16)"; g.beginPath(); (g as any).roundRect ? (g as any).roundRect(x + u * 0.6, y + u * 1.6, w, h, Math.min(w, h) * 0.2) : g.rect(x + u, y + 2 * u, w, h); g.fill();
+  { const k = w / h > 1.8 ? "btn-wide" : "btn"; if (IMG[k]) { g.drawImage(tmul(k, col), x + o, y + o, w, h); return; } }
   box(x + o, y + o, w, h, col, u);
 }
 export function homeIcon(x: number, y: number, s: number) {
+  if (fitPic("icon-home", x, y, s, s)) return;
   const lw = Math.max(1.2, s / 22);
   sk(rrPts(x + s * 0.24, y + s * 0.44, s * 0.52, s * 0.44, s * 0.06), C.cream, lw);
   sk(polyPts([[x + s * 0.5, y + s * 0.1], [x + s * 0.9, y + s * 0.5], [x + s * 0.1, y + s * 0.5]], 3), C.red, lw);
   sk(rrPts(x + s * 0.43, y + s * 0.62, s * 0.14, s * 0.26, s * 0.05), C.brown, lw * 0.8);
 }
 export function speakerIcon(x: number, y: number, s: number, on = true) {
+  if (fitPic(on ? "icon-sound-on" : "icon-sound-off", x, y, s, s)) return;
   const lw = Math.max(1.5, s / 14); sk(polyPts([[x + s * 0.16, y + s * 0.38], [x + s * 0.34, y + s * 0.38], [x + s * 0.54, y + s * 0.2], [x + s * 0.54, y + s * 0.8], [x + s * 0.34, y + s * 0.62], [x + s * 0.16, y + s * 0.62]], 1), C.k, lw);
   g.strokeStyle = on ? C.k : C.red; g.lineWidth = lw; g.lineCap = "round"; g.beginPath();
   if (on) { g.arc(x + s * 0.56, y + s * 0.5, s * 0.14, -0.9, 0.9); g.moveTo(x + s * 0.56 + Math.cos(-0.9) * s * 0.26, y + s * 0.5 + Math.sin(-0.9) * s * 0.26); g.arc(x + s * 0.56, y + s * 0.5, s * 0.26, -0.9, 0.9); }
@@ -202,6 +266,7 @@ export function speakerIcon(x: number, y: number, s: number, on = true) {
 export { txt, star };
 
 export function palm(x: number, gy: number, u: number) {
+  if (prop("palm", x + 2 * u, gy, 32 * u)) return;
   const sway = Math.sin(D.t * 0.6 + x) * u * 0.6, tx = x + u * 3 + sway, ty = gy - 29 * u, lw = Math.max(1.2, u * 0.6);
   g.lineCap = "round"; g.strokeStyle = C.k; g.lineWidth = u * 2.6; g.beginPath(); g.moveTo(x + u, gy); g.quadraticCurveTo(x - u * 1.5, gy - 16 * u, tx, ty); g.stroke();
   g.strokeStyle = "#B8946E"; g.lineWidth = u * 1.6; g.stroke();
@@ -229,6 +294,7 @@ function hills(gy: number, c: string, amp: number, sd: number) {
 /** scene backdrops from the theme guide */
 export function backdrop(kind: "kampung" | "taman" | "dusk" | "pasar" | "plain", horizon = 0.62) {
   const { W, H, U } = D, gy = H * horizon;
+  if (kind !== "plain" && cover("bg-" + kind)) return gy;
   const top = kind === "dusk" ? "#E9C9B8" : kind === "pasar" ? "#9C98BC" : C.sky, bot = kind === "dusk" ? "#F6E3C8" : kind === "pasar" ? "#C4B6DE" : "#EEF4EC";
   const gr = g.createLinearGradient(0, 0, 0, gy); gr.addColorStop(0, top); gr.addColorStop(1, bot); g.fillStyle = gr; g.fillRect(0, 0, W, gy + 1);
   if (kind === "dusk") sun(W * 0.8, gy * 0.72, U * 8);

@@ -1,6 +1,6 @@
 import { g, D, C, R, MIN, hit, Pt, sfx, say, box, bubbles, burst, shuffle, ri, COLS, star, txt, rnd, ptri } from "./core";
 import * as SC from "./scenes";
-import { veh, VW, backdrop, road, place, btnBox, shape, garage } from "./art";
+import { veh, VW, backdrop, road, place, btnBox, shape, garage, cover, pic, prop, fitPic, tmul } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
 import { fitU } from "./games1";
@@ -42,11 +42,11 @@ export class Count extends Game {
   }
   tick(dt: number) { this.cars.forEach((c) => ease(c, dt)); this.opts.forEach((o) => ease(o, dt)); if (this.go) this.go += dt; }
   paint() {
-    const gy = backdrop("dusk", 0.4), u = D.U;
-    R(0, gy, D.W, D.H - gy, "#D9CFC0");
+    const gy = backdrop("dusk", 0.4), u = D.U, paintedToll = cover("bg-toll");
+    if (!paintedToll) R(0, gy, D.W, D.H - gy, "#D9CFC0");
     const tx = (D.W > D.H ? D.W * 0.66 : D.W * 0.92);
-    SC.tollPlaza(tx, this.cars.length ? this.cars[0].y + this.cars[0].h * 0.4 : gy, u);
-    place("toll", tx, this.cars.length ? this.cars[0].y + this.cars[0].h * 0.4 : gy, u);
+    if (!paintedToll) SC.tollPlaza(tx, this.cars.length ? this.cars[0].y + this.cars[0].h * 0.4 : gy, u);
+    { const by = this.cars.length ? this.cars[0].y + this.cars[0].h * 0.4 : gy; place("toll", tx, by, u); const bar = pic("toll-barrier"); if (bar) { const L = 22 * u, H2 = L * bar.naturalHeight / bar.naturalWidth; g.save(); g.translate(tx - 5 * u, by - 9 * u); g.rotate(-Math.min(1.2, (this.go || 0) * 3)); g.drawImage(bar, -L, -H2 / 2, L, H2); g.restore(); } }
     for (const c of this.cars) {
       const dx = this.go ? Math.pow(this.go, 2) * D.W * 0.25 : 0;
       veh("car", c.x + dx, c.y + c.h * 0.4 + bobY(c), this.u, c.col);
@@ -125,6 +125,8 @@ export class ShapeGarage extends Game {
 
 // 10. Letter Road ----------------------------------------------------------
 const WORDS = { en: [["CAR", "car"], ["BUS", "bus"], ["VAN", "van"]], bm: [["BAS", "bus"], ["VAN", "van"], ["LORI", "lorry"]] } as any;
+/** painted wooden letter tile (warm glow when it is the one to find / found), else the code box */
+function lTile(x: number, y: number, w: number, h: number, col: string, u: number) { const im = pic("letter-tile"); if (!im) { box(x, y, w, h, col, u); return; } if (col === C.yellow) { const gl = g.createRadialGradient(x + w / 2, y + h / 2, 0, x + w / 2, y + h / 2, w * 0.8); gl.addColorStop(0, "rgba(255,226,140,.8)"); gl.addColorStop(1, "rgba(255,226,140,0)"); g.fillStyle = gl; g.fillRect(x - w * 0.3, y - h * 0.3, w * 1.6, h * 1.6); } g.drawImage(im, x, y, w, h); }
 export class LetterRoad extends Game {
   id = "letter"; rounds = 3; w = "CAR"; vk = "car"; got = 0; lane = 1; carL = 1; wave: { l: string; lane: number; x: number; hit?: boolean }[] = []; u = 4; scroll = 0; lanesY: number[] = []; lh = 0;
   start() { const W = WORDS[S.lang][this.round]; this.w = W[0]; this.vk = W[1]; this.got = 0; this.lane = this.carL = 1; this.newWave(); this.prompt(); }
@@ -148,14 +150,14 @@ export class LetterRoad extends Game {
     if (this.wave.every((w) => w.x < -0.1)) this.newWave();
   }
   paint() {
-    const u = D.U, top = this.lanesY[0] - this.lh / 2; { const hz = Math.max(D.H * 0.12, top * 0.32); backdrop("plain", hz / D.H); SC.padi(hz, top, u); SC.padi(top + this.lh * 3, D.H + u, u); SC.palm(D.W * 0.04, hz + u * 2, u * 0.6); SC.palm(D.W * 0.9, hz + u * 2, u * 0.6); }
+    const u = D.U, top = this.lanesY[0] - this.lh / 2; { const hz = Math.max(D.H * 0.12, top * 0.32); backdrop("plain", hz / D.H); if (!cover("bg-padi")) { SC.padi(hz, top, u); SC.padi(top + this.lh * 3, D.H + u, u); SC.palm(D.W * 0.04, hz + u * 2, u * 0.6); SC.palm(D.W * 0.9, hz + u * 2, u * 0.6); } }
     R(0, top, D.W, this.lh * 3, C.road); for (let i = 1; i < 3; i++) { const y = top + this.lh * i; for (let x = -(this.scroll % (u * 20)); x < D.W; x += u * 20) R(x, y - u / 2, u * 10, u, C.white); }
     // word slots + picture
     const bs = Math.min(this.lh * 0.7, (D.W * 0.5) / this.w.length), by = this.back.y + this.back.h + D.H * 0.07;
     const wx0 = D.W / 2 - (this.w.length * bs * 1.1) / 2;
     veh(this.vk, wx0 - bs * 1.2, by + bs * 0.4, fitU(this.vk, bs * 1.6, bs * 0.9), C.yellow);
-    for (let i = 0; i < this.w.length; i++) { box(wx0 + i * bs * 1.1, by - bs / 2, bs, bs, i < this.got ? C.yellow : C.cream, u); if (i < this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, C.k, "center", false); else if (i === this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, "#d8d0c4", "center", false); }
-    for (const w of this.wave) if (w.x > -0.1 && !w.hit) { const x = w.x * D.W, y = this.lanesY[w.lane], s = this.lh * 0.66; R(x - s / 2 - u, y - s / 2 - u * 3, u * 2, s + u * 3, C.k); R(x + s / 2 - u, y - s / 2 - u * 3, u * 2, s + u * 3, C.k); box(x - s / 2, y - s / 2 - u * 4, s, s * 0.8, w.l === this.w[this.got] ? C.yellow : C.cream, u); txt(w.l, x, y - u * 4 + s * 0.05, s * 0.45, C.k, "center", false); }
+    for (let i = 0; i < this.w.length; i++) { lTile(wx0 + i * bs * 1.1, by - bs / 2, bs, bs, i < this.got ? C.yellow : C.cream, u); if (i < this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, C.k, "center", false); else if (i === this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, "#d8d0c4", "center", false); }
+    for (const w of this.wave) if (w.x > -0.1 && !w.hit) { const x = w.x * D.W, y = this.lanesY[w.lane], s = this.lh * 0.66; R(x - s / 2 - u, y - s / 2 - u * 3, u * 2, s + u * 3, C.k); R(x + s / 2 - u, y - s / 2 - u * 3, u * 2, s + u * 3, C.k); lTile(x - s / 2, y - s / 2 - u * 4, s, s * 0.8, w.l === this.w[this.got] ? C.yellow : C.cream, u); txt(w.l, x, y - u * 4 + s * 0.05, s * 0.45, C.k, "center", false); }
     const cy = top + this.lh * (this.carL + 0.5); veh("car", 0.2 * D.W, cy + this.u * 5, this.u, C.red);
   }
 }
@@ -183,8 +185,9 @@ export class Race extends Game {
   }
   tick(dt: number) { this.vs.forEach((v) => { if (this.drag !== v) ease(v, dt, 5); else v.wig = 0; }); if (this.racing) { this.racing += dt; this.vs.forEach((v) => (v.hx = v.x = this.slots[v.slot].x + Math.pow(this.racing, 2) * D.W * 0.08 * (1.2 - v.rank * 0.15))); if (this.racing > 3.2) this.win(D.W / 2, D.H / 2); } }
   paint() {
-    { const gy = backdrop("plain", 0.6); SC.raceCrowd(this.slots.length ? Math.min(gy, this.slots[0].y - this.slots[0].h / 2) : gy, D.U); } const u = D.U;
+    { const gy = backdrop("plain", 0.6); if (!cover("bg-race")) SC.raceCrowd(this.slots.length ? Math.min(gy, this.slots[0].y - this.slots[0].h / 2) : gy, D.U); } const u = D.U;
     for (let i = 0; i < 3; i++) { const s = this.slots[i]; R(0, s.y - s.h / 2 + u, D.W, s.h - u * 2, C.road); R(s.x - s.w / 2, s.y + s.h / 2 - u * 3, u, u * 2, C.white); const vs = this.vs.find((v) => v.slot === i); if (!vs && !this.racing) { const want = SETS[this.round][i]; veh(want, s.x, s.y + s.h * 0.4, Math.max(2, Math.round(this.base * SCALE[want])), C.k, { ghost: true }); } }
+    prop("race-flag", D.W * 0.85 + u * 4, this.slots[0].y - this.slots[0].h / 2 + u, this.slots[0].h * 0.9);
     for (let y = 0; y < 6; y++) R(D.W * 0.85, this.slots[0].y - this.slots[0].h / 2 + y * this.slots[0].h * 0.5, u * 3, this.slots[0].h * 0.25, y % 2 ? C.white : C.k);
     for (const v of this.vs) veh(v.k, v.x + wx(v), v.y + (VW[v.k][1] * v.u) / 2, v.u, v.col);
   }
@@ -211,22 +214,26 @@ export class Helper extends Game {
   }
   tick(dt: number) { this.opts.forEach((o) => ease(o, dt)); if (this.sent) { this.st = Math.min(1, this.st + dt * 0.6); } }
   paint() {
-    const gy = backdrop("plain", 0.55), u = D.U; SC.shophouses(D.W * 0.02, D.W * 0.42, gy, u * 0.9); SC.tree(D.W * 0.9, gy, u); const sx = D.W * 0.62, pu = Math.max(2, Math.floor(Math.min(D.W, D.H) / 70));
+    const gy = backdrop("plain", 0.55), u = D.U; if (!cover("bg-helper")) { SC.shophouses(D.W * 0.02, D.W * 0.42, gy, u * 0.9); SC.tree(D.W * 0.9, gy, u); } const sx = D.W * 0.62, pu = Math.max(2, Math.floor(Math.min(D.W, D.H) / 70));
     const fixed = this.sent && this.st > 0.8;
     if (this.need === "fire") { // small cartoon flame on a house, put out with water
-      place("home", sx, gy, pu);
-      if (!fixed) { const fx = sx + 6.5 * pu, fy = gy - 13 * pu; for (let i = 0; i < 4; i++) { const t = (D.t * 0.25 + i / 4) % 1; g.fillStyle = `rgba(150,146,140,${0.55 * (1 - t)})`; g.beginPath(); g.arc(fx + Math.sin(t * 5 + i) * pu * 1.5, fy - t * 12 * pu, pu * (1.6 + t * 2.4), 0, 7); g.fill(); } }
+      const hs = pic("house-small"), fs = pic("fire-small");
+      if (hs) prop("house-small", sx, gy, 26 * pu); else place("home", sx, gy, pu);
+      if (hs && fs) { if (!fixed) { const fl = 1 + Math.sin(D.t * 2.2) * 0.04; prop("fire-small", sx + 3 * pu, gy - 19 * pu, 11 * pu * fl); } }
+      else if (!fixed) { const fx = sx + 6.5 * pu, fy = gy - 13 * pu; for (let i = 0; i < 4; i++) { const t = (D.t * 0.25 + i / 4) % 1; g.fillStyle = `rgba(150,146,140,${0.55 * (1 - t)})`; g.beginPath(); g.arc(fx + Math.sin(t * 5 + i) * pu * 1.5, fy - t * 12 * pu, pu * (1.6 + t * 2.4), 0, 7); g.fill(); } }
       if (this.sent && this.st > 0.6) for (let i = 0; i < 6; i++) R(sx - 6 * pu + i * 3 * pu, gy - 34 * pu + ((D.t * 50 + i * 13) % (14 * pu)), pu, pu * 2, C.blue);
       if (fixed) star(sx + 5 * pu, gy - 28 * pu, pu * 2, C.yellow);
     }
-    if (this.need === "amb") { // child with a sore knee (plaster only); after check-up, a star sticker and a smile
+    if (this.need === "amb" && pic("sore-knee-kid")) { prop("sore-knee-kid", sx, gy, 22 * pu); if (fixed) star(sx + 4 * pu, gy - 12 * pu, pu * 2, C.yellow); }
+    else if (this.need === "amb") { // child with a sore knee (plaster only); after check-up, a star sticker and a smile
       R(sx - 4 * pu, gy - 10 * pu, 8 * pu, 7 * pu, C.lav); R(sx - 3 * pu, gy - 3 * pu, 2 * pu, 3 * pu, "#e9c39b"); R(sx + 1 * pu, gy - 3 * pu, 2 * pu, 3 * pu, "#e9c39b"); R(sx + 1 * pu, gy - 2 * pu, 2 * pu, pu, C.white);
       R(sx - 3.5 * pu, gy - 18 * pu, 7 * pu, 7 * pu, "#e9c39b"); R(sx - 3.5 * pu, gy - 19 * pu, 7 * pu, 2 * pu, C.k); R(sx - 2 * pu, gy - 15 * pu, pu, pu, C.k); R(sx + 1 * pu, gy - 15 * pu, pu, pu, C.k);
       if (fixed) { R(sx - 2 * pu, gy - 13 * pu, 4 * pu, pu, C.k); star(sx - 1 * pu, gy - 7 * pu, pu * 2, C.yellow); const w = Math.sin(D.t * 3) > 0 ? 2 : 0; R(sx + 4 * pu, gy - (14 + w) * pu, 2 * pu, 5 * pu, "#e9c39b"); } else R(sx - 1 * pu, gy - 13 * pu, 2 * pu, pu, C.k);
     }
     if (this.need === "tow") { // broken-down car: bonnet up, little warning triangle; then towed away
-      const off = fixed ? (this.st - 0.8) * D.W : 0; veh("car", sx + off, gy, pu, C.blue);
-      if (!fixed) { R(sx + 5 * pu, gy - 12 * pu, 4 * pu, pu, C.k); R(sx + 8 * pu, gy - 12 * pu, pu, 4 * pu, C.k); ptri(sx - 20 * pu, gy - 6 * pu, 6 * pu, 6 * pu, C.orange, pu); }
+      const off = fixed ? (this.st - 0.8) * D.W : 0;
+      if (pic("broken-car")) prop("broken-car", sx + off, gy, 15 * pu); else veh("car", sx + off, gy, pu, C.blue);
+      if (!fixed && !pic("broken-car")) { R(sx + 5 * pu, gy - 12 * pu, 4 * pu, pu, C.k); R(sx + 8 * pu, gy - 12 * pu, pu, 4 * pu, C.k); ptri(sx - 20 * pu, gy - 6 * pu, 6 * pu, 6 * pu, C.orange, pu); }
     }
     for (const o of this.opts) {
       if (o === this.sent) { const tx = sx - (VW[o.k][0] * o.u) * 0.9, x = o.hx + (tx - o.hx) * this.st, y = o.hy + (gy - o.hy) * this.st; veh(o.k, x, y, o.u, o.k === "fire" ? C.red : o.k === "tow" ? C.yellow : C.white, { lights: true }); continue; }

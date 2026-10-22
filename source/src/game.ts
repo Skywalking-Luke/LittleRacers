@@ -1,5 +1,5 @@
 import { g, D, C, R, MIN, hit, Rect, Scene, Pt, go, burst, sfx, say, box, star, txt } from "./core";
-import { btnBox, homeIcon, speakerIcon } from "./art";
+import { btnBox, homeIcon, speakerIcon, fitPic } from "./art";
 import { S } from "./audio";
 let homeFn: () => Scene = null as any;
 export function setHome(f: () => Scene) { homeFn = f; }
@@ -55,7 +55,8 @@ export abstract class Game implements Scene {
   up(p: Pt) { this.release(p); this.drag = null; }
   grab(it: Item, p: Pt) { this.drag = it; this.offX = p.x - it.x; this.offY = p.y - it.y; sfx.pop(); }
 }
-export function drizzle() { g.fillStyle = "rgba(255,255,255,.55)"; const u = D.U; for (let i = 0; i < 40; i++) { const x = (i * 97.3 + D.t * 30) % D.W, y = (i * 53.1 + D.t * 140 + i * i) % D.H; g.fillRect(x, y, u / 2 + 1, u * 2); } }
+export function drizzle() { return; /* specks removed (Luke) */ }
+function _oldDrizzle() { g.fillStyle = "rgba(255,255,255,.55)"; const u = D.U; for (let i = 0; i < 40; i++) { const x = (i * 97.3 + D.t * 30) % D.W, y = (i * 53.1 + D.t * 140 + i * i) % D.H; g.fillRect(x, y, u / 2 + 1, u * 2); } }
 
 class Done implements Scene {
   again: Rect; home: Rect; t = 0;
@@ -70,6 +71,7 @@ class Done implements Scene {
     star(D.W / 2 - s * 0.26, D.H * 0.38, s * 0.08, C.pink); star(D.W / 2 + s * 0.26, D.H * 0.38, s * 0.08, C.lav);
     const a = this.again, h = this.home;
     iconBtn(a, C.green, () => { // replay arrow
+      if (fitPic("icon-replay", a.x + a.w * 0.12, a.y + a.h * 0.12, a.w * 0.76, a.h * 0.76)) return;
       const u = Math.max(3, a.w / 14), cx = a.x + a.w / 2, cy = a.y + a.h / 2, r = a.w * 0.26;
       g.lineCap = "round"; g.strokeStyle = C.k; g.lineWidth = u * 2.6; g.beginPath(); g.arc(cx, cy, r, 0.5, 0.5 + Math.PI * 1.6); g.stroke(); g.strokeStyle = C.white; g.lineWidth = u * 1.6; g.stroke();
       const ex = cx + Math.cos(0.5 + Math.PI * 1.6) * r, ey = cy + Math.sin(0.5 + Math.PI * 1.6) * r; g.fillStyle = C.white; g.strokeStyle = C.k; g.lineWidth = u * 0.5; g.beginPath(); g.moveTo(ex + u * 2.4, ey); g.lineTo(ex - u * 1.6, ey - u * 2.2); g.lineTo(ex - u * 1.2, ey + u * 2.4); g.closePath(); g.fill(); g.stroke();
