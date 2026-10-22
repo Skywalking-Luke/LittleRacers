@@ -70,9 +70,9 @@ class Done implements Scene {
     star(D.W / 2 - s * 0.26, D.H * 0.38, s * 0.08, C.pink); star(D.W / 2 + s * 0.26, D.H * 0.38, s * 0.08, C.lav);
     const a = this.again, h = this.home;
     iconBtn(a, C.green, () => { // replay arrow
-      const u = Math.max(3, a.w / 14), cx = a.x + a.w / 2, cy = a.y + a.h / 2;
-      for (let i = 0; i < 28; i++) { const t = i / 28 * Math.PI * 1.6 + 0.5; R(cx + Math.cos(t) * a.w * 0.26 - u, cy + Math.sin(t) * a.w * 0.26 - u, u * 2, u * 2, C.white); }
-      R(cx + a.w * 0.12, cy - a.w * 0.3, u * 4, u * 2, C.white); R(cx + a.w * 0.2, cy - a.w * 0.3, u * 2, u * 4, C.white);
+      const u = Math.max(3, a.w / 14), cx = a.x + a.w / 2, cy = a.y + a.h / 2, r = a.w * 0.26;
+      g.lineCap = "round"; g.strokeStyle = C.k; g.lineWidth = u * 2.6; g.beginPath(); g.arc(cx, cy, r, 0.5, 0.5 + Math.PI * 1.6); g.stroke(); g.strokeStyle = C.white; g.lineWidth = u * 1.6; g.stroke();
+      const ex = cx + Math.cos(0.5 + Math.PI * 1.6) * r, ey = cy + Math.sin(0.5 + Math.PI * 1.6) * r; g.fillStyle = C.white; g.strokeStyle = C.k; g.lineWidth = u * 0.5; g.beginPath(); g.moveTo(ex + u * 2.4, ey); g.lineTo(ex - u * 1.6, ey - u * 2.2); g.lineTo(ex - u * 1.2, ey + u * 2.4); g.closePath(); g.fill(); g.stroke();
     });
     iconBtn(h, C.cream, () => homeIcon(h.x + h.w * 0.12, h.y + h.h * 0.1, h.w * 0.76));
     if (S.rain) drizzle();

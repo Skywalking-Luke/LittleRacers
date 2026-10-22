@@ -1,5 +1,5 @@
 import { g, D, C, R, MIN, hit, Rect, Scene, Pt, go, star, pcirc, txt } from "./core";
-import { veh, cloud, place, palm, btnBox, homeIcon } from "./art";
+import { ART, veh, cloud, place, palm, btnBox, homeIcon } from "./art";
 import { goHome } from "./game";
 import { say, stopVoice, bell, soft, S } from "./audio";
 // Goodnight, Little Jeep / Selamat Malam, Jip Kecil (bedtime-story.md)
@@ -9,7 +9,7 @@ export class Bedtime implements Scene {
   sc = 0; st = 0; fade = 0; spoke = false; narrDone = false; tok = 0; tapFx = 0; stars = 0; showReplay = false; homeB: Rect; parB: Rect; replay: Rect; mus: any = null; vol = 1; off = false; lights = 2; puffs: { x: number; y: number; t: number }[] = [];
   enter() { this.sc = 0; this.st = 0; this.off = false; this.vol = 1; this.showReplay = false; this.begin(); }
   layout() { const s = Math.max(MIN, Math.min(D.W, D.H) * 0.11); this.homeB = { x: D.U * 3, y: D.U * 3, w: s, h: s }; this.parB = { x: D.W - s - D.U * 3, y: D.U * 3, w: s, h: s }; const r = Math.max(MIN * 1.4, Math.min(D.W, D.H) * 0.22); this.replay = { x: D.W / 2 - r / 2, y: D.H / 2 - r / 2, w: r, h: r }; }
-  leave() { this.tok++; if (this.mus) clearInterval(this.mus); this.mus = null; stopVoice(); }
+  leave() { ART.sleepy = false; this.tok++; if (this.mus) clearInterval(this.mus); this.mus = null; stopVoice(); }
   begin() {
     const t = ++this.tok; this.st = 0; this.spoke = false; this.narrDone = false; this.tapFx = 0; this.lights = 2; this.stars = 0; this.puffs = [];
     const keys = ["bt1", "bt2", "bt3", "bt4", "bt5", "bt6", null, "bt8"];
@@ -39,7 +39,7 @@ export class Bedtime implements Scene {
   draw() {
     const { W, H, U } = D, gy = H * 0.68;
     if (this.off) { R(0, 0, W, H, "#0b0e18"); if (this.showReplay) this.ui(); else this.dimHome(); return; }
-    const sunset = this.sc === 0;
+    const sunset = this.sc === 0; ART.sleepy = this.sc >= 2;
     R(0, 0, W, gy, sunset ? "#D9A08A" : N.navy); R(0, gy * 0.55, W, gy * 0.45, sunset ? "#E8C08E" : N.night2);
     if (sunset) pcirc(W * 0.75, gy * 0.85, U * 10, "#F2C27A"); else { pcirc(W * 0.8, H * 0.15, U * 7, N.lamp); pcirc(W * 0.8 + U * 3, H * 0.15 - U * 2, U * 6, sunset ? "#D9A08A" : N.navy); for (let i = 0; i < 14; i++) { const tw = 0.5 + 0.5 * Math.sin(D.t * 0.8 + i); R((i * 137) % W, ((i * 71) % (gy * 0.5)) + U * 4, U, U, `rgba(250,246,238,${0.3 + tw * 0.5})`); } }
     R(0, gy, W, H - gy, this.sc === 3 ? "#4E6B55" : N.field);

@@ -10,27 +10,75 @@ export const C = {
 };
 export const COLS: Record<string, string> = { red: C.red, yellow: C.yellow, blue: C.blue, green: C.green };
 
-export function R(x: number, y: number, w: number, h: number, c: string) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
-/** pixel circle made of u-sized blocks */
-export function pcirc(cx: number, cy: number, r: number, c: string, u = D.U) {
-  g.fillStyle = c; const n = Math.ceil(r / u);
-  for (let j = -n; j < n; j++) for (let i = -n; i < n; i++) {
-    const dx = (i + 0.5) * u, dy = (j + 0.5) * u;
-    if (dx * dx + dy * dy <= r * r) g.fillRect(Math.round(cx + i * u), Math.round(cy + j * u), u, u);
+// ---------- storybook sketch helpers (seeded jitter: stable, no flicker) ----------
+let S0 = 1;
+export const rand = () => { S0 = (S0 * 16807) % 2147483647; return S0 / 2147483647; };
+export function seed(a: number, b = 0, c = 0) { S0 = (Math.abs(((Math.round(a) * 73856093) ^ (Math.round(b) * 19349663) ^ (Math.round(c) * 83492791)) | 0) % 2147483646) + 1; }
+type Pts = [number, number][];
+export function smooth(pts: Pts) {
+  const n = pts.length; g.beginPath(); g.moveTo((pts[n - 1][0] + pts[0][0]) / 2, (pts[n - 1][1] + pts[0][1]) / 2);
+  for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n]; g.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
+  g.closePath();
+}
+function seg(pts: Pts, a: [number, number], b: [number, number], k: number) { for (let i = 0; i < k; i++) pts.push([a[0] + ((b[0] - a[0]) * i) / k, a[1] + ((b[1] - a[1]) * i) / k]); }
+export function rrPts(x: number, y: number, w: number, h: number, r: number): Pts {
+  r = Math.max(0.5, Math.min(r, w / 2, h / 2)); const pts: Pts = [];
+  const cs: [number, number, number][] = [[x + w - r, y + r, -Math.PI / 2], [x + w - r, y + h - r, 0], [x + r, y + h - r, Math.PI / 2], [x + r, y + r, Math.PI]];
+  for (let c = 0; c < 4; c++) { const [cx, cy, a0] = cs[c]; for (let i = 0; i <= 2; i++) { const a = a0 + (i * Math.PI) / 4; pts.push([cx + Math.cos(a) * r * 1.08, cy + Math.sin(a) * r * 1.08]); }
+    const [nx, ny, na] = cs[(c + 1) % 4], e1: [number, number] = [cx + Math.cos(a0 + Math.PI / 2) * r, cy + Math.sin(a0 + Math.PI / 2) * r], e2: [number, number] = [nx + Math.cos(na) * r, ny + Math.sin(na) * r];
+    const L = Math.hypot(e2[0] - e1[0], e2[1] - e1[1]); if (L > r * 0.5) { const k = Math.max(1, Math.min(4, Math.round(L / Math.max(8, r * 2)))); seg(pts, e1, e2, k); pts.push(e2); } }
+  return pts;
+}
+export function elPts(cx: number, cy: number, rx: number, ry: number, n = 16): Pts { const p: Pts = []; for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; p.push([cx + Math.cos(a) * rx * 1.04, cy + Math.sin(a) * ry * 1.04]); } return p; }
+export function polyPts(v: Pts, k = 2): Pts { const p: Pts = []; for (let i = 0; i < v.length; i++) seg(p, v[i], v[(i + 1) % v.length], k); return p; }
+const hexRe = /^#([0-9a-f]{6})$/i;
+export function mix(c: string, t: string, f: number) { const a = hexRe.exec(c), b = hexRe.exec(t); if (!a || !b) return c; const x = parseInt(a[1], 16), y = parseInt(b[1], 16); const ch = (s: number) => Math.round(((x >> s) & 255) * (1 - f) + ((y >> s) & 255) * f); return "#" + ((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1); }
+export function grad(c: string, y0: number, y1: number): string | CanvasGradient { if (!hexRe.test(c) || y1 - y0 < 6) return c; const gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, mix(c, "#FFFFFF", 0.32)); gr.addColorStop(0.55, c); gr.addColorStop(1, mix(c, "#5a4a40", 0.12)); return gr; }
+/** fill a shape softly and outline it with 2 seeded, wobbly pencil passes */
+export function sk(pts: Pts, fill: string | null, lw = D.U * 0.7, ink = C.k, gradient = true) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const [x, y] of pts) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+  if (fill) { g.fillStyle = gradient ? grad(fill, y0, y1) : fill; smooth(pts); g.fill(); }
+  if (lw > 0) {
+    seed(x1 - x0, y1 - y0, pts.length); g.strokeStyle = ink; g.lineJoin = "round"; g.lineCap = "round"; const j = Math.max(0.8, lw * 0.75), a0 = g.globalAlpha;
+    for (let p = 0; p < 2; p++) { const jj = j * (p ? 1.5 : 1), q: Pts = pts.map(([x, y]) => [x + (rand() - 0.5) * jj, y + (rand() - 0.5) * jj]); g.lineWidth = p ? lw * 0.5 : lw; g.globalAlpha = a0 * (p ? 0.45 : 0.9); smooth(q); g.stroke(); }
+    g.globalAlpha = a0;
   }
 }
-/** pixel triangle, apex up, (x,y) top-left of bounding box */
+/** wobbly open pencil line through points */
+export function skLine(pts: Pts, lw = D.U * 0.7, ink = C.k) {
+  seed(pts.length, pts[pts.length - 1][0] - pts[0][0], pts[pts.length - 1][1] - pts[0][1]); g.strokeStyle = ink; g.lineCap = "round"; g.lineJoin = "round"; const a0 = g.globalAlpha;
+  for (let p = 0; p < 2; p++) { const jj = Math.max(0.6, lw * 0.6) * (p ? 1.5 : 1); g.lineWidth = p ? lw * 0.5 : lw; g.globalAlpha = a0 * (p ? 0.45 : 0.9); g.beginPath();
+    pts.forEach(([x, y], i) => { const X = x + (rand() - 0.5) * jj, Y = y + (rand() - 0.5) * jj; if (i) g.lineTo(X, Y); else g.moveTo(X, Y); }); g.stroke(); }
+  g.globalAlpha = a0;
+}
+export function heart(cx: number, cy: number, s: number, c: string) {
+  g.fillStyle = c; g.beginPath(); g.moveTo(cx, cy + s * 0.9); g.bezierCurveTo(cx - s * 1.3, cy, cx - s * 0.9, cy - s * 1.0, cx, cy - s * 0.35); g.bezierCurveTo(cx + s * 0.9, cy - s * 1.0, cx + s * 1.3, cy, cx, cy + s * 0.9); g.fill();
+  g.strokeStyle = C.k; g.globalAlpha *= 0.6; g.lineWidth = Math.max(1, s * 0.12); g.stroke(); g.globalAlpha /= 0.6;
+}
+
+/** soft rounded rectangle fill (full-screen fills stay square) */
+export function R(x: number, y: number, w: number, h: number, c: string) {
+  g.fillStyle = c; if (w <= 0 || h <= 0) return; const m = Math.min(w, h);
+  if (w >= D.W * 0.9 || h >= D.H * 0.9 || m < 2 || !(g as any).roundRect) { g.fillRect(x, y, w, h); return; }
+  g.beginPath(); (g as any).roundRect(x, y, w, h, Math.min(m * 0.35, D.U * 3)); g.fill();
+}
+/** soft circle; ink-coloured circles (outline underlays) get a wobbly pencil edge */
+export function pcirc(cx: number, cy: number, r: number, c: string, u = D.U) {
+  if (r <= 0) return;
+  if (c === C.k && r > u * 2) { sk(elPts(cx, cy, r - u * 0.35, r - u * 0.35, Math.max(10, Math.min(22, Math.round(r / u) * 2))), c, Math.max(1.2, u * 0.7)); return; }
+  g.fillStyle = c; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+}
+/** soft triangle, apex up, (x,y) top-left of bounding box */
 export function ptri(x: number, y: number, w: number, h: number, c: string, u = D.U) {
-  g.fillStyle = c; const rows = Math.max(1, Math.round(h / u));
-  for (let r = 0; r < rows; r++) { const ww = Math.max(u, Math.round(((r + 1) / rows) * w / u) * u); g.fillRect(Math.round(x + (w - ww) / 2), Math.round(y + r * u), ww, u); }
+  const pts = polyPts([[x + w / 2, y], [x + w, y + h], [x, y + h]], 2);
+  if (c === C.k) sk(pts, c, Math.max(1.2, u * 0.7)); else { g.fillStyle = grad(c, y, y + h); smooth(pts); g.fill(); }
 }
 export function box(x: number, y: number, w: number, h: number, c: string, u = D.U, edge = C.k) {
-  R(x, y, w, h, edge); R(x + u, y + u, w - 2 * u, h - 2 * u, c);
-  R(x + u, y + u, w - 2 * u, u, "rgba(255,255,255,.35)"); R(x + u, y + h - 2 * u, w - 2 * u, u, "rgba(0,0,0,.15)");
+  sk(rrPts(x, y, w, h, Math.min(w, h) * 0.2), c, Math.max(1.5, u * 0.7), edge);
 }
 export function txt(s: string, x: number, y: number, size: number, c = C.white, align: CanvasTextAlign = "center", outline = true) {
-  g.font = `${Math.round(size)}px PS2P, monospace`; g.textAlign = align; g.textBaseline = "middle";
-  if (outline) { g.fillStyle = C.k; const o = Math.max(2, size / 8); for (const [a, b] of [[-o, 0], [o, 0], [0, -o], [0, o], [o, o]]) g.fillText(s, x + a, y + b); }
+  size *= 1.25; g.font = `600 ${Math.round(size)}px Fredoka, "Baloo 2", "Trebuchet MS", sans-serif`; g.textAlign = align; g.textBaseline = "middle";
+  if (outline) { g.strokeStyle = C.k; g.lineJoin = "round"; g.lineWidth = Math.max(3, size / 5); g.strokeText(s, x, y); }
   g.fillStyle = c; g.fillText(s, x, y);
 }
 export type Rect = { x: number; y: number; w: number; h: number };
@@ -52,10 +100,10 @@ export function bubbles(x: number, y: number, n = 3, c = "rgba(255,255,255,.9)")
 export function stepParts(dt: number) {
   for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 160 * dt; p.vx *= 0.99; if (p.life <= 0 || p.y > D.H + 40) parts.splice(i, 1); }
 }
-export function drawParts() { for (const p of parts) { if (p.star) star(p.x, p.y, p.s * 1.4, p.c); else R(p.x, p.y, p.s, p.s, p.c); } }
+export function drawParts() { for (const p of parts) { if (p.star) star(p.x, p.y, p.s * 1.4, p.c); else { g.fillStyle = p.c; g.beginPath(); g.arc(p.x, p.y, p.s * 0.6, 0, Math.PI * 2); g.fill(); } } }
 export function star(cx: number, cy: number, r: number, c: string, edge = true) {
   const path = () => { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.48 : r; g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.closePath(); };
-  path(); if (edge) { g.lineWidth = Math.max(3, r / 5); g.strokeStyle = C.k; g.lineJoin = "miter"; g.stroke(); }
+  path(); if (edge) { g.lineWidth = Math.max(3, r / 5); g.strokeStyle = C.k; g.lineJoin = "round"; g.stroke(); }
   g.fillStyle = c; g.fill();
 }
 
@@ -73,7 +121,7 @@ export function resize() {
   D.W = window.innerWidth; D.H = window.innerHeight;
   cv.width = Math.round(D.W * D.dpr); cv.height = Math.round(D.H * D.dpr);
   cv.style.width = D.W + "px"; cv.style.height = D.H + "px";
-  g.setTransform(D.dpr, 0, 0, D.dpr, 0, 0); g.imageSmoothingEnabled = false;
+  g.setTransform(D.dpr, 0, 0, D.dpr, 0, 0); g.imageSmoothingEnabled = true;
   D.U = Math.max(3, Math.floor(Math.min(D.W, D.H) / 110));
   if (scene && scene.layout) scene.layout();
 }
@@ -115,7 +163,6 @@ function drawCue(now: number) {
   const cx = D.W / 2, cy = Math.max(k * 12, D.H * 0.15);
   g.save(); g.globalAlpha = 0.85 * a;
   g.fillStyle = "rgba(255,255,255,0.8)"; g.beginPath(); g.arc(cx, cy + k * 0.5, k * 5.5, 0, Math.PI * 2); g.fill();
-  g.fillStyle = "#E07A8A";
-  for (const [x, y, w] of [[-2, 0, 2], [1, 0, 2], [-3, 1, 7], [-3, 2, 7], [-2, 3, 5], [-1, 4, 3], [0, 5, 1]]) g.fillRect(cx + (x - 0.5) * k, cy + (y - 2.5) * k, w * k, k);
+  heart(cx, cy + k * 0.5, k * 3.2, "#E07A8A");
   g.restore();
 }

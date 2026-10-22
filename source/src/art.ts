@@ -1,54 +1,80 @@
-import { g, D, C, R, pcirc, ptri, box, txt, star } from "./core";
+import { g, D, C, R, pcirc, ptri, box, txt, star, sk, skLine, rrPts, elPts, polyPts, grad, mix, seed, rand } from "./core";
 export const VW: Record<string, [number, number]> = {
   car: [18, 11], taxi: [18, 12], kancil: [13, 10], bus: [28, 15], lorry: [28, 14], fire: [28, 14], amb: [22, 13],
   tow: [26, 13], jeep: [18, 13], train: [40, 13], police: [18, 12], moto: [14, 11], van: [22, 13], build: [24, 12],
 };
 export type VOpt = { flip?: boolean; lights?: boolean; flash?: boolean; body?: boolean; wheels?: number; roof?: boolean; ghost?: boolean };
-/** draw a vehicle standing on ground y=gy, centred on cx, block size u. */
+/** bedtime sets this so vehicles get sleepy half-closed eyes */
+export const ART = { sleepy: false };
+const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
+/** one friendly eye: white, big pupil looking forward, slow blink */
+export function eye(x: number, y: number, r: number, ph = 0) {
+  const lw = Math.max(1, r * 0.22), blink = ((D.t + ph) % 6) < 0.16;
+  if (ART.sleepy || blink) { g.strokeStyle = C.k; g.lineWidth = lw * 1.1; g.lineCap = "round"; g.beginPath(); g.arc(x, y - r * 0.2, r * 0.8, 0.25 * Math.PI, 0.75 * Math.PI); g.stroke(); if (ART.sleepy) { g.beginPath(); g.moveTo(x - r * 0.9, y + r * 0.05); g.lineTo(x + r * 0.9, y + r * 0.05); g.stroke(); } return; }
+  g.fillStyle = "#FFFFFF"; g.beginPath(); g.ellipse(x, y, r * 0.85, r, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = C.k; g.lineWidth = lw; g.stroke();
+  g.fillStyle = "#3b3633"; g.beginPath(); g.arc(x + r * 0.22, y + r * 0.12, r * 0.52, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "#FFFFFF"; g.beginPath(); g.arc(x + r * 0.38, y - r * 0.08, r * 0.18, 0, Math.PI * 2); g.fill();
+}
+/** draw a vehicle standing on ground y=gy, centred on cx, unit size u. smooth storybook style with eyes on the windscreen */
 export function veh(kind: string, cx: number, gy: number, u: number, col: string, o: VOpt = {}) {
   const [w, h] = VW[kind] || VW.car;
   g.save();
   if (o.flip) { g.translate(cx * 2, 0); g.scale(-1, 1); }
   if (o.ghost) g.globalAlpha = 0.25;
-  const x0 = cx - (w * u) / 2, y0 = gy - h * u;
-  const P = (ix: number, iy: number, ww: number, hh: number, c: string) => R(x0 + ix * u, y0 + iy * u, ww * u, hh * u, c);
-  const O = (ix: number, iy: number, ww: number, hh: number, c: string) => { P(ix, iy, ww, hh, C.k); P(ix + 1, iy + 1, ww - 2, hh - 2, c); P(ix + 1, iy + 1, ww - 2, 1, "rgba(255,255,255,.35)"); };
-  const W = (ix: number, iy: number) => { pcirc(x0 + ix * u, y0 + iy * u, 2.2 * u, C.k, u); pcirc(x0 + ix * u, y0 + iy * u, 1 * u, C.grey, u); };
-  const lamp = (ix: number, iy: number) => { P(ix, iy, 1, 1, C.yellow); if (o.lights) { g.fillStyle = "rgba(255,240,120,.55)"; g.fillRect(x0 + (ix + 1) * u, y0 + (iy - 2) * u, 6 * u, 5 * u); } };
-  const fl = true;
-  const siren = (ix: number, iy: number) => { P(ix - 1, iy - 1, 6, 3, C.k); P(ix, iy, 2, 1, fl ? C.red : "#7a2030"); P(ix + 2, iy, 2, 1, fl ? "#1d3f8a" : C.blue); };
+  const x0 = cx - (w * u) / 2, y0 = gy - h * u, lw = Math.max(1.2, u * 0.55), ph = (hash(kind + col) % 50) / 10;
+  const X = (i: number) => x0 + i * u, Y = (i: number) => y0 + i * u;
+  const B = (ix: number, iy: number, ww: number, hh: number, c: string, r = 2) => sk(rrPts(X(ix), Y(iy), ww * u, hh * u, r * u), c, lw);
+  const Win = (ix: number, iy: number, ww: number, hh: number) => { B(ix, iy, ww, hh, C.win, 1); g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = Math.max(1, u * 0.35); g.lineCap = "round"; g.beginPath(); g.moveTo(X(ix + ww * 0.25), Y(iy + hh * 0.75)); g.lineTo(X(ix + ww * 0.5), Y(iy + hh * 0.25)); g.stroke(); };
+  const W = (ix: number, iy: number, r = 2.2) => { sk(elPts(X(ix), Y(iy), r * u, r * u, 14), "#55514d", lw, C.k, false); g.fillStyle = "#EDE6D6"; g.beginPath(); g.arc(X(ix), Y(iy), r * u * 0.45, 0, 7); g.fill(); g.fillStyle = "#B9B2A4"; g.beginPath(); g.arc(X(ix), Y(iy), r * u * 0.15, 0, 7); g.fill(); };
+  const E = (ix: number, iy: number, s = 0.9) => { eye(X(ix), Y(iy), s * u, ph); eye(X(ix + s * 2.1), Y(iy), s * u, ph); };
+  const smile = (ix: number, iy: number, ww = 1.6) => { g.strokeStyle = C.k; g.lineWidth = lw; g.lineCap = "round"; g.beginPath(); g.arc(X(ix), Y(iy) - ww * u * 0.5, ww * u * 0.6, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke(); };
+  const lamp = (ix: number, iy: number) => {
+    if (o.lights) { const gr = g.createRadialGradient(X(ix), Y(iy), u, X(ix + 4), Y(iy), u * 7); gr.addColorStop(0, "rgba(255,240,160,.7)"); gr.addColorStop(1, "rgba(255,240,160,0)"); g.fillStyle = gr; g.beginPath(); g.moveTo(X(ix), Y(iy)); g.lineTo(X(ix + 8), Y(iy - 3)); g.lineTo(X(ix + 8), Y(iy + 3)); g.closePath(); g.fill(); }
+    sk(elPts(X(ix), Y(iy), u * 0.75, u * 0.75, 10), "#F6DE8A", lw * 0.7, C.k, false);
+  };
+  const tail = (ix: number, iy: number) => { g.fillStyle = "#F09A92"; g.beginPath(); g.ellipse(X(ix), Y(iy), u * 0.45, u * 0.7, 0, 0, 7); g.fill(); };
+  const siren = (ix: number, iy: number) => { B(ix, iy, 4.2, 1.7, "#F6F1E6", 0.8); const on = o.flash ? Math.sin(D.t * 4) > 0 : true; g.fillStyle = on ? "#E58C8C" : "#b88"; g.beginPath(); g.arc(X(ix + 1.1), Y(iy + 0.85), u * 0.6, 0, 7); g.fill(); g.fillStyle = on ? "#8DB3E2" : "#89a"; g.beginPath(); g.arc(X(ix + 3.1), Y(iy + 0.85), u * 0.6, 0, 7); g.fill(); };
+  // soft ground shadow
+  g.fillStyle = "rgba(60,50,40,.13)"; g.beginPath(); g.ellipse(cx, gy + u * 0.2, w * u * 0.5, u * 1.1, 0, 0, 7); g.fill();
   switch (kind) {
     case "car": case "taxi": case "police": {
       const top = kind === "car" ? 0 : 1;
-      if (kind === "taxi") { P(7, 0, 4, 2, C.k); P(8, 0, 2, 1, C.yellow); }
-      if (kind === "police") siren(7, 0);
-      O(3, top, 12, 6, col); P(5, top + 1, 3, 3, C.win); P(10, top + 1, 3, 3, C.win); P(9, top + 1, 1, 4, col);
-      O(0, top + 4, 18, 6, col); lamp(16, top + 5); P(1, top + 5, 1, 1, "#ff6b6b");
-      if (kind === "police") { P(1, top + 7, 16, 1, C.blue); }
-      if (kind === "taxi") { P(1, top + 7, 16, 1, C.k); }
+      if (kind === "taxi") B(7.2, 0, 3.6, 1.8, C.yellow, 0.7);
+      if (kind === "police") siren(7, -0.2);
+      B(3, top + 0.2, 12, 6.5, col, 3.2); Win(4.6, top + 1.4, 4, 3.4); Win(9.4, top + 1.4, 4.4, 3.4);
+      B(0, top + 4, 18, 5.6, col, 2.6); g.strokeStyle = "rgba(255,255,255,.45)"; g.lineWidth = Math.max(1, u * 0.4); g.beginPath(); g.moveTo(X(2), Y(top + 5)); g.lineTo(X(15), Y(top + 5)); g.stroke();
+      if (kind === "police") R(X(1), Y(top + 6.6), 16 * u, u * 0.9, C.blue);
+      if (kind === "taxi") for (let i = 0; i < 8; i++) R(X(1.5 + i * 2), Y(top + 6.7), u, u * 0.8, i % 2 ? C.k : C.white);
+      E(10.4, top + 3, 0.85); lamp(16.9, top + 5.7); tail(0.6, top + 5.7); smile(15, top + 7.6, 1.6);
       W(4.5, top + 9); W(13.5, top + 9); break;
     }
-    case "jeep": O(3, 0, 11, 6, col); P(5, 1, 3, 3, C.win); P(9, 1, 3, 3, C.win); O(0, 5, 18, 6, col); P(1, 6, 16, 1, "rgba(0,0,0,.12)"); lamp(16, 6); pcirc(x0 + 0.5 * u, y0 + 7.5 * u, 2 * u, C.k, u); W(4.5, 11); W(13.5, 11); break;
-    case "train": { O(28, 0, 12, 11, col); P(30, 2, 5, 3, C.win); P(25, 1, 3, 3, C.k); lamp(39, 7); for (let c = 0; c < 2; c++) { O(c * 14, 2, 13, 9, c ? C.lav : C.yellow); P(c * 14 + 2, 4, 4, 3, C.win); P(c * 14 + 7, 4, 4, 3, C.win); } P(0, 10, 40, 1, C.k); for (const wx of [3, 10, 17, 24, 31, 37]) W(wx, 11); break; }
-    case "kancil": O(2, 0, 8, 6, col); P(3, 1, 5, 3, C.win); O(0, 4, 13, 5, col); lamp(11, 5); W(3.5, 8); W(9.5, 8); break;
-    case "bus": O(0, 0, 28, 13, col); for (let i = 0; i < 5; i++) P(2 + i * 5, 2, 4, 4, C.win); P(1, 8, 26, 1, C.white); P(23, 7, 3, 5, C.win); lamp(26, 10); W(6, 13); W(22, 13); break;
+    case "jeep": B(3, 0, 11, 6.5, col, 1.6); Win(4.6, 1.2, 3.8, 3.6); Win(9.2, 1.2, 4, 3.6); sk(elPts(X(0.5), Y(7.6), 2 * u, 2.2 * u, 12), "#55514d", lw, C.k, false);
+      B(0, 5, 18, 6.4, col, 1.8); B(2, 8.6, 5, 1.6, mix(col, "#4A4A48", 0.25), 0.8); B(11, 8.6, 5, 1.6, mix(col, "#4A4A48", 0.25), 0.8);
+      E(10, 2.9, 0.85); lamp(16.8, 6.8); smile(15, 9, 1.4); W(4.5, 11); W(13.5, 11); break;
+    case "train": { for (let c = 0; c < 2; c++) { B(c * 14, 2, 13, 9, c ? C.lav : C.yellow, 2); Win(c * 14 + 2, 4, 4, 3); Win(c * 14 + 7, 4, 4, 3); }
+      B(25, 0.5, 3, 3.5, "#6d6763", 1); B(28, 0, 12, 11, col, 2.6); Win(30, 1.8, 6.5, 4); E(31, 3.8, 0.85); lamp(39, 7.5); smile(36.5, 8.6, 1.6);
+      R(X(0), Y(10.4), 40 * u, u, C.k); for (const wx of [3, 10, 17, 24, 31, 37]) W(wx, 11, 1.7); break; }
+    case "kancil": B(2, 0, 8, 5.6, col, 2.8); Win(3, 0.9, 5.6, 3.2); B(0, 3.8, 13, 5.2, col, 2.4); E(5.4, 2.5, 0.75); lamp(12.2, 5.4); tail(0.5, 5.4); smile(10.6, 7, 1.3); W(3.5, 8, 1.9); W(9.5, 8, 1.9); break;
+    case "bus": B(0, 0, 28, 13, col, 3); for (let i = 0; i < 4; i++) Win(2 + i * 5, 2, 4, 4); Win(22.2, 1.6, 5, 5.6);
+      R(X(1), Y(8.2), 26 * u, u * 0.9, "rgba(255,255,255,.75)"); B(20, 7.2, 1.8, 4.6, C.win, 0.6); E(23, 4.3, 0.9); lamp(27, 10.4); smile(25.6, 10.4, 1.6); W(6, 13); W(22, 13); break;
     case "lorry": case "fire": case "tow": {
-      if (kind === "tow") { O(0, 6, 17, 5, col); P(2, 1, 12, 1, C.k); P(13, 1, 1, 6, C.k); P(2, 1, 1, 5, C.k); P(1, 5, 3, 2, C.k); }
-      else O(0, 0, 19, 12, col);
-      if (kind === "fire") { P(2, 2, 15, 1, C.grey); for (let i = 0; i < 8; i++) P(2 + i * 2, 1, 1, 3, C.grey); P(1, 7, 17, 1, C.yellow); siren(21, 1); }
-      if (kind === "tow") siren(18, 1);
-      O(17, 3, 11, 9, kind === "lorry" ? C.yellow : col); P(21, 5, 5, 3, C.win); lamp(26, 9); P(0, 11, 28, 1, C.k);
-      W(5, 12); W(10, 12); W(23, 12); break;
+      if (kind === "tow") { B(0, 6, 17, 5, col, 1.4); skLine([[X(2.5), Y(6)], [X(4), Y(1.5)], [X(13.5), Y(1.5)], [X(15), Y(6)]], lw * 1.3); skLine([[X(2.5), Y(1.5)], [X(1.5), Y(5)]], lw); g.strokeStyle = C.k; g.lineWidth = lw; g.beginPath(); g.arc(X(1.8), Y(5.6), u * 0.8, 0, Math.PI); g.stroke(); }
+      else B(0, 0, 19, 12, col, 1.8);
+      if (kind === "fire") { B(2, 1.2, 15, 2, "#E9E4DA", 0.8); for (let i = 1; i < 8; i++) R(X(2 + i * 1.9), Y(1.3), u * 0.5, u * 1.8, "#a49c90"); R(X(1), Y(7), 17 * u, u * 1.1, C.yellow); siren(21, 1); }
+      if (kind === "tow") siren(18.5, 1.2);
+      B(17, 3, 11, 9, kind === "lorry" ? C.yellow : col, 2.6); Win(21, 4.4, 6.2, 3.8); E(21.9, 6.2, 0.85); lamp(27.3, 9.6); smile(25.6, 10.6, 1.4);
+      R(X(0), Y(11.2), 28 * u, u * 0.9, "#5d5955"); W(5, 12); W(10, 12); W(23, 12); break;
     }
     case "amb": case "van": {
-      O(0, 1, 22, 11, kind === "amb" ? C.white : col); P(16, 3, 5, 3, C.win); P(2, 3, 5, 3, C.win); lamp(20, 8);
-      if (kind === "amb") { P(9, 4, 4, 2, C.red); P(10, 3, 2, 4, C.red); P(1, 8, 20, 1, C.red); siren(9, 0); }
+      B(0, 1, 22, 11, kind === "amb" ? C.white : col, 3); Win(15.6, 2.6, 5.6, 3.8); Win(2, 3, 5, 3); E(16.4, 4.5, 0.85); lamp(21.2, 8.6); tail(0.6, 8.6); smile(19.6, 9.6, 1.4);
+      if (kind === "amb") { R(X(1), Y(8.2), 20 * u, u * 0.9, C.red); R(X(9.2), Y(3.7), 3.6 * u, 1.2 * u, C.red); R(X(10.4), Y(2.5), 1.2 * u, 3.6 * u, C.red); siren(9, -0.3); }
       W(5, 11); W(17, 11); break;
     }
-    case "moto": W(3, 9); W(11, 9); O(3, 5, 9, 3, col); P(10, 3, 2, 3, C.k); P(5, 0, 4, 3, C.k); P(6, 1, 3, 1, col); P(6, 3, 3, 3, C.blue); lamp(12, 5); break;
+    case "moto": W(3, 9, 1.9); W(11, 9, 1.9); B(3.5, 5, 8.5, 3, col, 1.4); skLine([[X(10.5), Y(5)], [X(11.4), Y(2.8)], [X(10.4), Y(2.4)]], lw * 1.2);
+      B(5.4, 2.4, 3.2, 3.6, C.blue, 1.3); sk(elPts(X(7), Y(1.3), 1.7 * u, 1.5 * u, 12), col, lw); B(7, 0.8, 2.2, 1.2, C.win, 0.5); eye(X(8.1), Y(1.4), u * 0.5, ph); lamp(12.3, 5.6); break;
     case "build": {
-      if (o.roof) { O(5, 0, 13, 6, col); P(7, 1, 4, 3, C.win); P(12, 1, 4, 3, C.win); }
-      if (o.body) { O(0, 4, 24, 6, col); lamp(22, 5); P(1, 5, 1, 1, "#ff6b6b"); }
+      if (o.roof) { B(5, 0, 13, 6.4, col, 3); Win(6.8, 1.2, 4.6, 3.4); Win(12.2, 1.2, 4.6, 3.4); E(13, 3, 0.8); }
+      if (o.body) { B(0, 4, 24, 6, col, 2.6); lamp(22.8, 5.8); tail(0.6, 5.8); if (o.roof) smile(21, 8.2, 1.6); }
       const ws = [3.5, 8.5, 15.5, 20.5];
       for (let i = 0; i < 4; i++) { if ((o.wheels || 0) > i) W(ws[i], 10); }
       break;
@@ -58,88 +84,136 @@ export function veh(kind: string, cx: number, gy: number, u: number, col: string
   return { w: w * u, h: h * u };
 }
 export function sky(top = C.sky, bot = C.sky2) {
-  const { W, H, U } = D; const bands = 6;
-  for (let i = 0; i < bands; i++) R(0, (H * i) / bands, W, H / bands + 1, i < 3 ? top : bot);
+  const { W, H, U } = D; const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, top); gr.addColorStop(1, bot); g.fillStyle = gr; g.fillRect(0, 0, W, H);
   cloud(W * 0.18 + Math.sin(D.t / 5) * 20, H * 0.12, U * 3); cloud(W * 0.75 + Math.cos(D.t / 6) * 20, H * 0.18, U * 2.5);
 }
-export function cloud(x: number, y: number, u: number) { R(x, y, 14 * u, 4 * u, C.white); R(x + 3 * u, y - 3 * u, 6 * u, 3 * u, C.white); R(x + 8 * u, y - 2 * u, 4 * u, 2 * u, C.white); }
-export function ground(y: number, c1 = C.grass, c2 = C.grass2) { const { W, H, U } = D; R(0, y, W, H - y, c1); for (let x = 0; x < W; x += U * 8) R(x + ((y / U) % 2) * U * 4, y, U * 4, U, c2); }
-export function road(y: number, h: number, scroll = 0) {
-  const { W, U } = D; R(0, y, W, h, C.road); R(0, y, W, U, C.k); R(0, y + h - U, W, U, C.k);
-  const d = U * 10; for (let x = -((scroll % (d * 2)) + d * 2); x < W + d; x += d * 2) R(x, y + h / 2 - U / 2, d, U, C.line);
+export function cloud(x: number, y: number, u: number) {
+  const pts: [number, number][] = []; const bumps: [number, number, number][] = [[2.5, 1.5, 2.6], [6, -0.8, 3.6], [10.2, 0.4, 3], [12.8, 2, 2]];
+  g.fillStyle = "rgba(255,255,255,.95)"; g.beginPath(); for (const [bx, by, r] of bumps) { g.moveTo(x + (bx + r) * u, y + by * u); g.arc(x + bx * u, y + by * u, r * u, 0, Math.PI * 2); } g.fill();
+  g.beginPath(); (g as any).roundRect ? (g as any).roundRect(x, y + 0.6 * u, 14 * u, 3.4 * u, 1.7 * u) : g.rect(x, y + 0.6 * u, 14 * u, 3.4 * u); g.fill();
+  g.strokeStyle = "rgba(150,170,190,.35)"; g.lineWidth = Math.max(1, u * 0.35); g.beginPath(); g.moveTo(x + 1 * u, y + 4 * u); g.quadraticCurveTo(x + 7 * u, y + 4.6 * u, x + 13 * u, y + 4 * u); g.stroke(); void pts;
 }
-export function sun(x: number, y: number, r: number) { pcirc(x, y, r, C.yellow); pcirc(x - r * 0.3, y - r * 0.3, r * 0.3, "#fff6a8"); }
-export function face(x: number, y: number, u: number, happy = true) { R(x - 3 * u, y, u, u, C.k); R(x + 2 * u, y, u, u, C.k); if (happy) { R(x - 2 * u, y + 2 * u, 4 * u, u, C.k); R(x - 3 * u, y + u, u, u, C.k); R(x + 2 * u, y + u, u, u, C.k); } }
+export function ground(y: number, c1 = C.grass, c2 = C.grass2) {
+  const { W, H, U } = D; g.fillStyle = grad(c1, y, H); g.fillRect(0, y, W, H - y);
+  g.strokeStyle = C.k; g.globalAlpha = 0.35; g.lineWidth = Math.max(1, U * 0.45); g.lineCap = "round"; seed(W, 7); g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= W + 20; x += 20) g.lineTo(x, y + (rand() - 0.5) * U * 0.6); g.stroke(); g.globalAlpha = 1;
+  seed(W, H, y); g.strokeStyle = c2; g.lineWidth = Math.max(1, U * 0.5);
+  const n = Math.min(40, Math.floor(W / (U * 9))); g.beginPath();
+  for (let i = 0; i < n; i++) { const tx = rand() * W, ty = y + U * 2 + rand() * Math.max(1, H - y - U * 3); if (ty > H) continue; const s = U * (1 + rand()); g.moveTo(tx - s, ty - s * 1.4); g.lineTo(tx, ty); g.lineTo(tx + s * 0.2, ty - s * 1.8); g.moveTo(tx, ty); g.lineTo(tx + s, ty - s * 1.3); }
+  g.stroke();
+  for (let i = 0; i < n / 4; i++) { const fx = rand() * W, fy = y + U * 3 + rand() * Math.max(1, H - y - U * 4); if (fy > H - U) continue; g.fillStyle = "#FFFDF6"; for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; g.beginPath(); g.arc(fx + Math.cos(a) * U * 0.7, fy + Math.sin(a) * U * 0.7, U * 0.5, 0, 7); g.fill(); } g.fillStyle = C.yellow; g.beginPath(); g.arc(fx, fy, U * 0.4, 0, 7); g.fill(); }
+}
+export function road(y: number, h: number, scroll = 0) {
+  const { W, U } = D; g.fillStyle = grad(C.road, y, y + h); g.fillRect(0, y, W, h);
+  skLine([[0, y], [W * 0.33, y + U * 0.2], [W * 0.66, y - U * 0.2], [W, y]], Math.max(1.2, U * 0.6)); skLine([[0, y + h], [W * 0.5, y + h + U * 0.2], [W, y + h]], Math.max(1.2, U * 0.6));
+  const d = U * 10; g.fillStyle = "rgba(255,255,255,.9)"; for (let x = -((scroll % (d * 2)) + d * 2); x < W + d; x += d * 2) { g.beginPath(); (g as any).roundRect ? (g as any).roundRect(x, y + h / 2 - U / 2, d, U, U / 2) : g.rect(x, y + h / 2 - U / 2, d, U); g.fill(); }
+}
+export function sun(x: number, y: number, r: number) { const gr = g.createRadialGradient(x, y, r * 0.6, x, y, r * 2); gr.addColorStop(0, "rgba(255,236,170,.55)"); gr.addColorStop(1, "rgba(255,236,170,0)"); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * 2, 0, 7); g.fill(); sk(elPts(x, y, r, r, 18), C.yellow, Math.max(1.2, r * 0.06)); }
+export function face(x: number, y: number, u: number, happy = true) { g.fillStyle = C.k; g.beginPath(); g.arc(x - 2.5 * u, y + u * 0.5, u * 0.7, 0, 7); g.arc(x + 2.5 * u, y + u * 0.5, u * 0.7, 0, 7); g.fill(); if (happy) { g.strokeStyle = C.k; g.lineWidth = Math.max(1, u * 0.7); g.lineCap = "round"; g.beginPath(); g.arc(x, y + u * 0.6, u * 2, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke(); } }
 
 // ---- places: (cx, ground y, u) ----
 export function place(kind: string, cx: number, gy: number, u: number) {
-  const P = (ix: number, iy: number, w: number, h: number, c: string) => R(cx + ix * u, gy - iy * u, w * u, h * u, c);
+  const X = (i: number) => cx + i * u, Y = (i: number) => gy - i * u, lw = Math.max(1.2, u * 0.6);
+  const B = (ix: number, iy: number, w: number, h: number, c: string, r = 1) => sk(rrPts(X(ix), Y(iy), w * u, h * u, r * u), c, lw);
+  const Win = (ix: number, iy: number, w: number, h: number) => { B(ix, iy, w, h, C.win, 0.6); skLine([[X(ix + w / 2), Y(iy)], [X(ix + w / 2), Y(iy - h)]], lw * 0.6); };
+  const roof = (ix: number, iy: number, w: number, h: number, c: string) => sk(polyPts([[X(ix + w * 0.5), Y(iy)], [X(ix + w), Y(iy - h)], [X(ix), Y(iy - h)]], 3), c, lw);
   switch (kind) {
     case "atuk": case "home": { // kampung house on stilts
-      const roof = kind === "atuk" ? C.red : C.orange;
-      for (const s of [-9, -3, 3, 8]) P(s, 5, 1, 5, C.k);
-      box(cx - 11 * u, gy - 15 * u, 22 * u, 10 * u, kind === "atuk" ? "#e8b878" : C.cream, u);
-      ptri(cx - 13 * u, gy - 23 * u, 26 * u, 9 * u, C.k, u); ptri(cx - 11 * u, gy - 22 * u, 22 * u, 7 * u, roof, u);
-      P(-3, 14, 5, 8, C.brown); P(4, 13, 5, 4, C.win); P(-9, 13, 4, 4, C.win); P(-5, 5, 9, 1, C.k); P(-4, 4, 1, 4, C.k); P(2, 4, 1, 4, C.k);
-      if (kind === "atuk") { P(-14, 4, 2, 1, C.k); face(cx + 14 * u, gy - 8 * u, u * 0.8); pcirc(cx + 14 * u, gy - 10 * u, 3.5 * u, "#e9c39b", u); face(cx + 14 * u, gy - 11 * u, u * 0.7); P(12, 15, 5, 2, C.white); P(13, 7, 3, 4, C.green); }
+      const rc = kind === "atuk" ? C.red : C.orange, wall = kind === "atuk" ? "#E3B98A" : "#EFD9B4";
+      for (const s of [-9, -3, 3, 8]) B(s, 5.4, 1.2, 5.4, "#9b7656", 0.4);
+      B(-11, 15, 22, 10, wall, 1); g.strokeStyle = "rgba(120,85,55,.35)"; g.lineWidth = Math.max(1, u * 0.3); g.beginPath(); for (let i = 1; i < 5; i++) { g.moveTo(X(-10.5), Y(15 - i * 2)); g.lineTo(X(10.5), Y(15 - i * 2)); } g.stroke();
+      roof(-13.5, 23.5, 27, 9, rc); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = Math.max(1, u * 0.35); g.beginPath(); for (let i = 1; i < 4; i++) { g.moveTo(X(0), Y(23.2)); g.lineTo(X(-13 + i * 6.5), Y(14.6)); } g.stroke();
+      B(-3, 13.6, 5, 8.6, "#B08A68", 1.2); Win(4, 13, 5, 4); Win(-9.5, 13, 4, 4);
+      for (let i = 0; i < 3; i++) R(X(-4.5 + i * 0.6), Y(5 - i * 1.6), 7 * u, u * 0.7, "#9b7656");
+      if (kind === "atuk") { const wave = Math.sin(D.t * 1.6) * 0.35;
+        B(13.6, 3, 1, 3, C.k, 0.4); B(15.4, 3, 1, 3, C.k, 0.4); B(12.6, 8.5, 5, 5.6, C.green, 1.2); B(12.4, 13.5, 5.4, 5.4, C.white, 1.6);
+        skLine([[X(17.4), Y(12.2)], [X(19 + wave), Y(15.2)]], u * 0.9, "#c79a72"); pcirc(X(19 + wave), Y(15.6), u * 0.8, "#E9C39B");
+        sk(elPts(X(15.1), Y(16.6), 2.7 * u, 2.7 * u, 14), "#E9C39B", lw); B(13.1, 19.6, 4, 1.6, "#4A4A48", 0.4); face(X(15.1), Y(16.8), u * 0.5); R(X(13.6), Y(15), 3 * u, u * 0.5, "rgba(255,255,255,.9)"); }
       break;
     }
-    case "school": box(cx - 13 * u, gy - 16 * u, 26 * u, 16 * u, C.yellow, u); for (let i = 0; i < 3; i++) P(-10 + i * 8, 13, 4, 4, C.win); P(-2, 7, 4, 7, C.brown); P(12, 26, 1, 10, C.k); P(13, 26, 6, 4, C.red); P(13, 24, 6, 2, C.white); P(-14, 17, 28, 2, C.red); break;
-    case "petrol": P(-13, 17, 26, 3, C.k); P(-12, 16, 24, 2, C.red); P(-12, 14, 24, 1, C.white); P(-10, 14, 2, 14, C.grey); P(8, 14, 2, 14, C.grey); box(cx - 4 * u, gy - 9 * u, 7 * u, 9 * u, C.green, u); P(-2, 7, 3, 2, C.win); P(3, 6, 2, 1, C.k); P(4, 6, 1, 4, C.k); break;
-    case "durian": { P(-12, 18, 24, 2, C.k); for (let i = 0; i < 6; i++) P(-12 + i * 4, 17, 4, 3, i % 2 ? C.white : C.green); P(-1, 15, 2, 15, C.brown); box(cx - 12 * u, gy - 7 * u, 24 * u, 4 * u, C.brown, u); P(-10, 3, 2, 3, C.k); P(8, 3, 2, 3, C.k);
-      for (const dx of [-8, -2, 4]) { pcirc(cx + dx * u + 2 * u, gy - 9 * u, 2.6 * u, "#8ac13a", u); P(dx + 1, 12, 1, 1, C.k); P(dx + 3, 11, 1, 1, C.k); } break; }
-    case "pasar": for (let s = 0; s < 3; s++) { const ox = -15 + s * 10; P(ox, 14, 9, 2, C.k); for (let i = 0; i < 3; i++) P(ox + i * 3, 13, 3, 2, s % 2 ? (i % 2 ? C.white : C.purple) : (i % 2 ? C.white : C.orange)); box(cx + ox * u, gy - 7 * u, 9 * u, 7 * u, C.cream, u); P(ox + 1, 12, 1, 6, C.k); P(ox + 7, 12, 1, 6, C.k); pcirc(cx + (ox + 4.5) * u, gy - 5 * u, 1.5 * u, [C.red, C.yellow, C.green][s], u); }
-      for (let i = 0; i < 8; i++) pcirc(cx + (-15 + i * 4) * u, gy - 17 * u, 0.9 * u, i % 2 ? C.yellow : C.pink, u); break;
-    case "toll": P(-6, 20, 14, 3, C.k); P(-5, 19, 12, 2, C.blue); box(cx - 3 * u, gy - 14 * u, 7 * u, 14 * u, C.cream, u); P(-1, 11, 3, 3, C.win); P(-5, 17, 1, 17, C.grey); break;
+    case "school": B(-13, 16, 26, 16, C.yellow, 1); sk(rrPts(X(-14.5), Y(18.2), 29 * u, 3 * u, u), C.red, lw); for (let i = 0; i < 3; i++) Win(-10 + i * 8, 13, 4, 4); B(-2, 7, 4, 7, C.brown, 1);
+      skLine([[X(12.5), Y(0)], [X(12.5), Y(26)]], lw); for (let i = 0; i < 4; i++) R(X(13), Y(26 - i), 6 * u, u, i % 2 ? C.white : C.red); R(X(13), Y(26), 2.5 * u, 2 * u, C.blue); break;
+    case "petrol": sk(rrPts(X(-13.5), Y(18), 27 * u, 3.4 * u, u), C.red, lw); R(X(-12), Y(14.8), 24 * u, u * 0.8, C.white); B(-10.5, 14.6, 2, 14.6, C.grey, 0.6); B(8.5, 14.6, 2, 14.6, C.grey, 0.6);
+      B(-4, 9, 7, 9, C.green, 1.6); B(-2.6, 7.6, 4, 2.4, C.win, 0.5); skLine([[X(3), Y(6)], [X(4.6), Y(6)], [X(4.6), Y(2)]], lw); break;
+    case "durian": { sk(rrPts(X(-12.5), Y(19), 25 * u, 2.4 * u, u), C.k, lw); for (let i = 0; i < 6; i++) R(X(-12 + i * 4), Y(17), 4 * u, 3 * u, i % 2 ? C.white : C.green);
+      B(-1, 15, 2, 15, C.brown, 0.5); B(-12, 7, 24, 4, C.brown, 1); B(-10, 3, 2, 3, "#8a6a50", 0.4); B(8, 3, 2, 3, "#8a6a50", 0.4);
+      for (const dx of [-7, -1, 5]) { const x = X(dx + 1), y = Y(9.3), r = 2.6 * u; g.fillStyle = "#9BBF5A"; g.beginPath(); for (let k = 0; k < 18; k++) { const a = (k / 18) * Math.PI * 2, rr = k % 2 ? r : r * 1.18; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.9); } g.closePath(); g.fill(); g.strokeStyle = C.k; g.lineWidth = lw * 0.8; g.stroke(); } break; }
+    case "pasar": for (let s = 0; s < 3; s++) { const ox = -15 + s * 10; sk(rrPts(X(ox - 0.5), Y(14.4), 10 * u, 2.6 * u, u), s % 2 ? C.purple : C.orange, lw); for (let i = 0; i < 3; i++) R(X(ox + 0.5 + i * 3), Y(13.4), 1.4 * u, 1.5 * u, "rgba(255,255,255,.75)");
+        B(ox, 7, 9, 7, C.cream, 1); B(ox + 1, 12, 0.8, 5, "#8a6a50", 0.3); B(ox + 7.2, 12, 0.8, 5, "#8a6a50", 0.3); pcirc(X(ox + 4.5), Y(5), 1.5 * u, [C.red, C.yellow, C.green][s], u); }
+      skLine([[X(-15), Y(17)], [X(0), Y(16)], [X(15), Y(17)]], lw * 0.6); for (let i = 0; i < 8; i++) { const lx = X(-15 + i * 4), ly = Y(16.6); const gr = g.createRadialGradient(lx, ly + u, 0, lx, ly + u, u * 2.5); gr.addColorStop(0, "rgba(255,225,150,.6)"); gr.addColorStop(1, "rgba(255,225,150,0)"); g.fillStyle = gr; g.beginPath(); g.arc(lx, ly + u, u * 2.5, 0, 7); g.fill(); sk(elPts(lx, ly + u, u * 0.9, u * 1.1, 10), i % 2 ? C.yellow : C.pink, lw * 0.6); } break;
+    case "toll": sk(rrPts(X(-6.5), Y(20.5), 15 * u, 3 * u, u), C.blue, lw); B(-3, 14, 7, 14, C.cream, 1.2); B(-1.4, 11.5, 3.8, 3.2, C.win, 0.6); B(-5.5, 17, 1, 17, C.grey, 0.4); break;
   }
 }
 export function garage(x: number, y: number, w: number, h: number, col: string, open = 0, u = D.U) {
-  // roof
-  ptri(x - u, y - h * 0.3, w + 2 * u, h * 0.32, C.k, u); ptri(x + u, y - h * 0.26, w - 2 * u, h * 0.26, col, u);
-  box(x, y, w, h, col, u); R(x + 3 * u, y + 3 * u, w - 6 * u, h - 3 * u, C.k);
-  const dh = (h - 4 * u) * (1 - open);
-  R(x + 4 * u, y + 4 * u, w - 8 * u, h - 4 * u, "#3a3450");
-  for (let yy = 0; yy < dh; yy += 3 * u) R(x + 4 * u, y + 4 * u + yy, w - 8 * u, Math.min(2 * u, dh - yy), "#e9e6f5");
+  const lw = Math.max(1.2, u * 0.8);
+  sk(polyPts([[x + w / 2, y - h * 0.32], [x + w + u * 1.5, y + u], [x - u * 1.5, y + u]], 3), mix(col, "#4A4A48", 0.15), lw);
+  sk(rrPts(x, y, w, h, u * 1.5), col, lw);
+  const ix = x + 3.5 * u, iy = y + 3.5 * u, iw = w - 7 * u, ih = h - 3.5 * u;
+  g.fillStyle = "#4b4560"; g.fillRect(ix, iy, iw, ih);
+  const dh = ih * (1 - open);
+  if (dh > 1) { sk(rrPts(ix, iy, iw, dh, u * 0.6), "#ECE8F4", Math.max(1, u * 0.5)); g.strokeStyle = "rgba(120,110,150,.45)"; g.lineWidth = Math.max(1, u * 0.4); g.beginPath(); for (let yy = 3 * u; yy < dh - u; yy += 3 * u) { g.moveTo(ix + u, iy + yy); g.lineTo(ix + iw - u, iy + yy); } g.stroke(); R(ix + iw / 2 - 1.5 * u, iy + dh - 1.6 * u, 3 * u, u * 0.8, "#9a92b0"); }
 }
 export function shape(kind: string, cx: number, cy: number, r: number, col: string, u = D.U, hole = false) {
-  const c1 = hole ? "rgba(43,33,64,.35)" : C.k;
-  if (kind === "circle") { pcirc(cx, cy, r + u, c1, u); if (!hole) pcirc(cx, cy, r, col, u); }
-  else if (kind === "square") { R(cx - r - u, cy - r - u, 2 * r + 2 * u, 2 * r + 2 * u, c1); if (!hole) R(cx - r, cy - r, 2 * r, 2 * r, col); }
-  else { ptri(cx - r - 2 * u, cy - r - 2 * u, 2 * r + 4 * u, 2 * r + 3 * u, c1, u); if (!hole) ptri(cx - r, cy - r, 2 * r, 2 * r, col, u); }
+  const pts = kind === "circle" ? elPts(cx, cy, r, r, 18) : kind === "square" ? rrPts(cx - r, cy - r, 2 * r, 2 * r, r * 0.18) : polyPts([[cx, cy - r * 1.1], [cx + r * 1.15, cy + r * 0.9], [cx - r * 1.15, cy + r * 0.9]], 3);
+  if (hole) { sk(pts, "rgba(43,33,64,.30)", 0); g.setLineDash([u * 1.5, u * 1.2]); g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = Math.max(1, u * 0.6); smoothStroke(pts); g.setLineDash([]); }
+  else sk(pts, col, Math.max(1.4, u * 0.9));
 }
-export function btnBox(x: number, y: number, w: number, h: number, col: string, pressed = false) { const u = D.U; R(x + u, y + u * 2, w, h, "rgba(0,0,0,.25)"); box(x + (pressed ? u : 0), y + (pressed ? u : 0), w, h, col, u); }
+function smoothStroke(pts: [number, number][]) { const n = pts.length; g.beginPath(); g.moveTo((pts[n - 1][0] + pts[0][0]) / 2, (pts[n - 1][1] + pts[0][1]) / 2); for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n]; g.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); } g.closePath(); g.stroke(); }
+export function btnBox(x: number, y: number, w: number, h: number, col: string, pressed = false) {
+  const u = D.U, o = pressed ? u : 0; g.fillStyle = "rgba(74,60,50,.16)"; g.beginPath(); (g as any).roundRect ? (g as any).roundRect(x + u * 0.6, y + u * 1.6, w, h, Math.min(w, h) * 0.2) : g.rect(x + u, y + 2 * u, w, h); g.fill();
+  box(x + o, y + o, w, h, col, u);
+}
 export function homeIcon(x: number, y: number, s: number) {
-  const u = Math.max(2, Math.round(s / 12)); ptri(x + s * 0.1, y + s * 0.12, s * 0.8, s * 0.38, C.k, u); ptri(x + s * 0.18, y + s * 0.18, s * 0.64, s * 0.3, C.red, u);
-  R(x + s * 0.24, y + s * 0.48, s * 0.52, s * 0.4, C.k); R(x + s * 0.28, y + s * 0.5, s * 0.44, s * 0.34, C.cream); R(x + s * 0.43, y + s * 0.62, s * 0.14, s * 0.22, C.brown);
+  const lw = Math.max(1.2, s / 22);
+  sk(rrPts(x + s * 0.24, y + s * 0.44, s * 0.52, s * 0.44, s * 0.06), C.cream, lw);
+  sk(polyPts([[x + s * 0.5, y + s * 0.1], [x + s * 0.9, y + s * 0.5], [x + s * 0.1, y + s * 0.5]], 3), C.red, lw);
+  sk(rrPts(x + s * 0.43, y + s * 0.62, s * 0.14, s * 0.26, s * 0.05), C.brown, lw * 0.8);
 }
 export function speakerIcon(x: number, y: number, s: number, on = true) {
-  R(x + s * 0.18, y + s * 0.38, s * 0.18, s * 0.26, C.k); ptri(x + s * 0.18, y + s * 0.2, s * 0.36, s * 0.6, C.k);
-  R(x + s * 0.3, y + s * 0.2, s * 0.24, s * 0.62, C.k);
-  if (on) { R(x + s * 0.62, y + s * 0.38, s * 0.06, s * 0.26, C.k); R(x + s * 0.74, y + s * 0.28, s * 0.06, s * 0.46, C.k); }
-  else { for (let i = 0; i < 5; i++) { R(x + s * (0.6 + i * 0.06), y + s * (0.36 + i * 0.06), s * 0.07, s * 0.07, C.red); R(x + s * (0.84 - i * 0.06), y + s * (0.36 + i * 0.06), s * 0.07, s * 0.07, C.red); } }
+  const lw = Math.max(1.5, s / 14); sk(polyPts([[x + s * 0.16, y + s * 0.38], [x + s * 0.34, y + s * 0.38], [x + s * 0.54, y + s * 0.2], [x + s * 0.54, y + s * 0.8], [x + s * 0.34, y + s * 0.62], [x + s * 0.16, y + s * 0.62]], 1), C.k, lw);
+  g.strokeStyle = on ? C.k : C.red; g.lineWidth = lw; g.lineCap = "round"; g.beginPath();
+  if (on) { g.arc(x + s * 0.56, y + s * 0.5, s * 0.14, -0.9, 0.9); g.moveTo(x + s * 0.56 + Math.cos(-0.9) * s * 0.26, y + s * 0.5 + Math.sin(-0.9) * s * 0.26); g.arc(x + s * 0.56, y + s * 0.5, s * 0.26, -0.9, 0.9); }
+  else { g.moveTo(x + s * 0.64, y + s * 0.38); g.lineTo(x + s * 0.86, y + s * 0.62); g.moveTo(x + s * 0.86, y + s * 0.38); g.lineTo(x + s * 0.64, y + s * 0.62); }
+  g.stroke();
 }
 export { txt, star };
 
 export function palm(x: number, gy: number, u: number) {
-  for (let i = 0; i < 14; i++) R(x + Math.round(Math.sin(i / 5) * 2) * u, gy - (i + 1) * 2 * u, 2 * u, 2 * u, C.brown);
-  const tx = x + Math.round(Math.sin(14 / 5) * 2) * u, ty = gy - 29 * u;
-  for (const [dx, dy] of [[-8, 2], [-4, -1], [4, -1], [8, 2], [0, -3]]) { R(tx + Math.min(0, dx) * u, ty + Math.min(dy, 0) * u, Math.abs(dx) * u + 2 * u, 2 * u, C.palm); R(tx + dx * u, ty + (dy + 1) * u, 2 * u, 2 * u, C.palm); }
-  pcirc(tx + u, ty + 3 * u, 1.2 * u, C.brown, u);
+  const sway = Math.sin(D.t * 0.6 + x) * u * 0.6, tx = x + u * 3 + sway, ty = gy - 29 * u, lw = Math.max(1.2, u * 0.6);
+  g.lineCap = "round"; g.strokeStyle = C.k; g.lineWidth = u * 2.6; g.beginPath(); g.moveTo(x + u, gy); g.quadraticCurveTo(x - u * 1.5, gy - 16 * u, tx, ty); g.stroke();
+  g.strokeStyle = "#B8946E"; g.lineWidth = u * 1.6; g.stroke();
+  g.strokeStyle = "rgba(90,70,50,.4)"; g.lineWidth = Math.max(1, u * 0.3); for (let i = 1; i < 9; i++) { const t = i / 9, px = (1 - t) * (1 - t) * (x + u) + 2 * t * (1 - t) * (x - u * 1.5) + t * t * tx, py = (1 - t) * (1 - t) * gy + 2 * t * (1 - t) * (gy - 16 * u) + t * t * ty; g.beginPath(); g.moveTo(px - u * 0.7, py); g.lineTo(px + u * 0.7, py - u * 0.2); g.stroke(); }
+  for (const [a, L] of [[-2.7, 11], [-2.2, 12], [-1.4, 9], [-0.9, 12], [-0.4, 11], [0.3, 9], [3.5, 9]] as [number, number][]) {
+    const ex = tx + Math.cos(a) * L * u, ey = ty + Math.sin(a) * L * u * 0.8 + (Math.abs(Math.cos(a)) > 0.5 ? L * u * 0.35 : 0), mx = (tx + ex) / 2, my = Math.min(ty, ey) - u * 2.5;
+    const n = -Math.sin(a), m = Math.cos(a); g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(mx + n * u * 2, my + m * u * 2, ex, ey); g.quadraticCurveTo(mx - n * u * 1.2, my - m * u * 1.2 + u * 2, tx, ty);
+    g.fillStyle = C.palm; g.fill(); g.strokeStyle = C.k; g.globalAlpha = 0.7; g.lineWidth = lw * 0.8; g.stroke(); g.globalAlpha = 1;
+  }
+  pcirc(tx + u, ty + 1.6 * u, 1.3 * u, "#9b7656", u);
 }
 export function playground(x: number, gy: number, u: number) {
-  R(x, gy - 14 * u, u * 2, 14 * u, C.blue); R(x + 12 * u, gy - 14 * u, 2 * u, 14 * u, C.blue); R(x, gy - 15 * u, 14 * u, 2 * u, C.blue);
-  R(x + 5 * u, gy - 13 * u, u, 7 * u, C.k); R(x + 3 * u, gy - 6 * u, 5 * u, u * 1.5, C.yellow);
-  for (let i = 0; i < 8; i++) R(x + 16 * u + i * 2 * u, gy - 12 * u + i * 1.5 * u, 3 * u, 2 * u, C.red);
+  const lw = Math.max(1.2, u * 0.6);
+  skLine([[x + u, gy], [x + u, gy - 14 * u], [x + 13 * u, gy - 14 * u], [x + 13 * u, gy]], u * 1.2, C.blue);
+  skLine([[x + 5.5 * u, gy - 14 * u], [x + 5.5 * u, gy - 6.5 * u]], lw * 0.6); skLine([[x + 8.5 * u, gy - 14 * u], [x + 8.5 * u, gy - 6.5 * u]], lw * 0.6); sk(rrPts(x + 4.5 * u, gy - 6.8 * u, 5 * u, 1.4 * u, u * 0.5), C.yellow, lw);
+  g.lineCap = "round"; g.strokeStyle = C.k; g.lineWidth = u * 2.2; g.beginPath(); g.moveTo(x + 16 * u, gy - 12 * u); g.quadraticCurveTo(x + 22 * u, gy - 10 * u, x + 31 * u, gy - 0.5 * u); g.stroke(); g.strokeStyle = C.red; g.lineWidth = u * 1.4; g.stroke();
+  skLine([[x + 16 * u, gy], [x + 16 * u, gy - 12 * u]], lw);
+}
+/** soft rolling hills along the horizon (seeded, static) */
+function hills(gy: number, c: string, amp: number, sd: number) {
+  const { W, U } = D; seed(sd, W); const k1 = 1 + rand() * 2, k2 = 3 + rand() * 3, p1 = rand() * 6, p2 = rand() * 6;
+  g.beginPath(); g.moveTo(0, gy); for (let x = 0; x <= W + 10; x += 10) { const t = x / W; g.lineTo(x, gy - amp * (0.55 + 0.3 * Math.sin(t * Math.PI * k1 + p1) + 0.15 * Math.sin(t * Math.PI * k2 + p2))); } g.lineTo(W, gy); g.closePath();
+  g.fillStyle = c; g.fill(); g.strokeStyle = "rgba(74,74,72,.18)"; g.lineWidth = Math.max(1, U * 0.4); g.stroke();
 }
 /** scene backdrops from the theme guide */
 export function backdrop(kind: "kampung" | "taman" | "dusk" | "pasar" | "plain", horizon = 0.62) {
   const { W, H, U } = D, gy = H * horizon;
-  if (kind === "dusk") { R(0, 0, W, gy * 0.5, "#E9C9B8"); R(0, gy * 0.5, W, gy * 0.5, "#F2DCC6"); pcirc(W * 0.8, gy * 0.75, U * 8, "#F4D7A0"); }
-  else if (kind === "pasar") { R(0, 0, W, gy * 0.5, "#9C98BC"); R(0, gy * 0.5, W, gy * 0.5, "#B7A9D6"); for (let i = 0; i < 6; i++) pcirc(W * (0.1 + i * 0.16), H * 0.12 + (i % 2) * U * 3, U * 0.8, "#FAF6EE"); }
-  else { R(0, 0, W, gy * 0.5, C.sky); R(0, gy * 0.5, W, gy * 0.5, C.sky2); cloud(W * 0.14 + Math.sin(D.t / 8) * 12, H * 0.1, U * 2.5); cloud(W * 0.7 + Math.cos(D.t / 9) * 12, H * 0.16, U * 2); }
-  ground(gy, kind === "pasar" ? "#A9BD9A" : C.grass, kind === "pasar" ? "#9AAF8B" : C.grass2);
+  const top = kind === "dusk" ? "#E9C9B8" : kind === "pasar" ? "#9C98BC" : C.sky, bot = kind === "dusk" ? "#F6E3C8" : kind === "pasar" ? "#C4B6DE" : "#EEF4EC";
+  const gr = g.createLinearGradient(0, 0, 0, gy); gr.addColorStop(0, top); gr.addColorStop(1, bot); g.fillStyle = gr; g.fillRect(0, 0, W, gy + 1);
+  if (kind === "dusk") sun(W * 0.8, gy * 0.72, U * 8);
+  else if (kind === "pasar") { for (let i = 0; i < 6; i++) star(W * (0.1 + i * 0.16), H * 0.12 + (i % 2) * U * 3, U * (0.9 + 0.2 * Math.sin(D.t * 0.7 + i)), "#FAF6EE", false); }
+  else { cloud(W * 0.14 + Math.sin(D.t / 8) * 12, H * 0.1, U * 2.5); cloud(W * 0.7 + Math.cos(D.t / 9) * 12, H * 0.16, U * 2); }
+  if (horizon < 0.9) { hills(gy, kind === "pasar" ? "#8E9AA8" : kind === "dusk" ? "#C9B7A0" : "#C9DCC0", Math.min(H * 0.12, U * 16), 3); hills(gy, kind === "pasar" ? "#97A88E" : kind === "dusk" ? "#B9C29A" : "#B3CDA2", Math.min(H * 0.07, U * 9), 9); }
+  ground(gy, kind === "pasar" ? "#A9BD9A" : C.grass, kind === "pasar" ? "#8FA67F" : "#94B583");
   if (kind === "kampung") { palm(W * 0.06, gy, U); palm(W * 0.92, gy, U); }
   if (kind === "taman") { playground(W * 0.04, gy, U); }
-  if (kind === "pasar") { for (let i = 0; i < 9; i++) { const x = W * (i + 0.5) / 9; R(x, H * 0.05, U / 2, U * 3, C.k); pcirc(x, H * 0.05 + U * 4, U * 1.6, "#F2C27A"); } R(0, H * 0.05, W, U / 2, C.k); }
+  if (kind === "pasar") { skLine([[0, H * 0.05], [W * 0.5, H * 0.07], [W, H * 0.05]], Math.max(1, U * 0.4)); for (let i = 0; i < 9; i++) { const x = W * (i + 0.5) / 9, y = H * 0.06 + U * 3.5; const lg = g.createRadialGradient(x, y, 0, x, y, U * 5); lg.addColorStop(0, "rgba(255,220,150,.55)"); lg.addColorStop(1, "rgba(255,220,150,0)"); g.fillStyle = lg; g.beginPath(); g.arc(x, y, U * 5, 0, 7); g.fill(); sk(elPts(x, y, U * 1.5, U * 1.8, 12), "#F2C27A", Math.max(1, U * 0.45)); } }
   return gy;
 }

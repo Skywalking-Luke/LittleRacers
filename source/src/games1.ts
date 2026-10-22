@@ -81,7 +81,7 @@ export class Wash extends Game {
     R(r.x - 8 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x + r.w + 6 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x - 8 * u, this.gy - 19 * u, r.w + 16 * u, 2 * u, C.blue);
     g.save(); g.translate(this.drive, 0);
     veh("car", this.cx, this.gy, u, this.col);
-    this.mud.forEach((m, i) => { if (m) { const ii = i % 6, jj = Math.floor(i / 6); R(r.x + (ii * r.w) / 6 + u, r.y + (jj * r.h) / 4 + u, r.w / 6 - u, r.h / 4 - u, (ii + jj) % 2 ? "#a88566" : "#9a7a5c"); } });
+    this.mud.forEach((m, i) => { if (m) { const ii = i % 6, jj = Math.floor(i / 6); const mx = r.x + ((ii + 0.5) * r.w) / 6, my = r.y + ((jj + 0.5) * r.h) / 4, k = 0.8 + ((i * 37) % 10) / 25; g.fillStyle = (ii + jj) % 2 ? "rgba(168,133,102,.92)" : "rgba(154,122,92,.92)"; g.beginPath(); g.ellipse(mx, my, (r.w / 11) * k, (r.h / 7.5) * k, (i % 5) * 0.6, 0, 7); g.fill(); g.beginPath(); g.arc(mx + (r.w / 12) * k, my - (r.h / 10), r.w / 34, 0, 7); g.fill(); } });
     if (this.foam > 0) for (let i = 0; i < 30 * this.foam; i++) { const x = r.x + ((i * 37) % 100) / 100 * r.w, y = r.y + ((i * 61) % 100) / 100 * r.h * 0.8; R(x, y, u * 3, u * 3, "rgba(255,255,255,.95)"); }
     if (this.phase === 3) for (let i = 0; i < 4; i++) star(r.x + r.w * (0.15 + i * 0.25), r.y + r.h * (0.2 + (i % 2) * 0.3), u * (2 + Math.sin(D.t * 3 + i)), C.white);
     g.restore();

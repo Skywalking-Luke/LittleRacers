@@ -212,7 +212,7 @@ export class Helper extends Game {
     const fixed = this.sent && this.st > 0.8;
     if (this.need === "fire") { // small cartoon flame on a house, put out with water
       place("home", sx, gy, pu);
-      if (!fixed) { const fx = sx + 5 * pu, fy = gy - 22 * pu, f = Math.sin(D.t * 2) * pu * 0.5; ptri(fx - 3 * pu, fy - 7 * pu - f, 6 * pu, 7 * pu, C.orange, pu); ptri(fx - 1.5 * pu, fy - 4 * pu, 3 * pu, 4 * pu, C.yellow, pu); }
+      if (!fixed) { const fx = sx + 6.5 * pu, fy = gy - 13 * pu; for (let i = 0; i < 4; i++) { const t = (D.t * 0.25 + i / 4) % 1; g.fillStyle = `rgba(150,146,140,${0.55 * (1 - t)})`; g.beginPath(); g.arc(fx + Math.sin(t * 5 + i) * pu * 1.5, fy - t * 12 * pu, pu * (1.6 + t * 2.4), 0, 7); g.fill(); } }
       if (this.sent && this.st > 0.6) for (let i = 0; i < 6; i++) R(sx - 6 * pu + i * 3 * pu, gy - 34 * pu + ((D.t * 50 + i * 13) % (14 * pu)), pu, pu * 2, C.blue);
       if (fixed) star(sx + 5 * pu, gy - 28 * pu, pu * 2, C.yellow);
     }
