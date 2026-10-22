@@ -55,12 +55,15 @@ export const sfx = {
 // ---- voice: recorded mp3 (listed in voice/manifest.json) or speechSynthesis ----
 const BASE = (import.meta as any).env.BASE_URL || "/LittleRacers/";
 let recorded = new Set<string>();
-// family mode: a private copy whose own voice/ folder (Luke's recordings) is checked first
 export const FAMILY = !!(window as any).LR_FAMILY;
+/** family mode: when a line has no recording, a silent visual cue is shown until this time (ms) */
+export const cue = { until: 0, start: 0 };
+// family mode: a private copy whose own voice/ folder (Luke's recordings) is checked first
 const FAM_BASE = location.pathname.replace(/[^/]*$/, "");
 let family = new Set<string>();
 const loadList = (url: string, set: (s: Set<string>) => void) => fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : [])).then((a) => { if (Array.isArray(a)) set(new Set(a.map(String))); }).catch(() => {});
-loadList(BASE + "voice/manifest.json", (x) => (recorded = x));
+// family copy: ONLY Luke's own recordings, never the public neural clips or speechSynthesis
+if (!FAMILY) loadList(BASE + "voice/manifest.json", (x) => (recorded = x));
 if (FAMILY) loadList(FAM_BASE + "voice/manifest.json", (x) => (family = x));
 let curAudio: HTMLAudioElement | null = null;
 export function stopVoice() {
@@ -100,11 +103,12 @@ export function say(key: string, vars?: Record<string, string>, cut = true, rate
     let done = false; const fin = () => { if (!done) { done = true; res(); } };
     const s = text(key, vars);
     setTimeout(fin, 1200 + s.length * 90 / rate * 0.9);
-    const src = family.has(file) ? FAM_BASE + "voice/" + file : recorded.has(file) ? BASE + "voice/" + file : "";
+    const src = FAMILY ? (family.has(file) ? FAM_BASE + "voice/" + file : "") : recorded.has(file) ? BASE + "voice/" + file : "";
     if (src) {
       const a = new Audio(src); curAudio = a;
       a.onended = fin; a.onerror = fin; a.play().catch(fin); return;
     }
+    if (FAMILY) { const n = performance.now(); cue.start = n; cue.until = n + 1800; setTimeout(fin, 1800); return; }
     try {
       const u = new SpeechSynthesisUtterance(s);
       u.lang = S.lang === "bm" ? "ms-MY" : "en-US";

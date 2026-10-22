@@ -1,4 +1,4 @@
-import { sfx, say, unlock, stopVoice } from "./audio";
+import { sfx, say, unlock, stopVoice, cue } from "./audio";
 export const cv = document.getElementById("c") as HTMLCanvasElement;
 export const g = cv.getContext("2d")!;
 export const D = { W: 0, H: 0, U: 4, t: 0, dpr: 1 };
@@ -98,7 +98,7 @@ export function loop(now: number) {
   if (scene.update) scene.update(dt);
   stepParts(dt);
   g.setTransform(D.dpr, 0, 0, D.dpr, 0, 0);
-  scene.draw(); drawParts();
+  scene.draw(); drawParts(); drawCue(now);
   requestAnimationFrame(loop);
 }
 export function fullscreen() {
@@ -107,3 +107,15 @@ export function fullscreen() {
 }
 export { sfx, say };
 export const cur = () => scene;
+
+// family mode: silent "look here" cue for lines Luke hasn't recorded (gentle pulsing heart, top centre)
+function drawCue(now: number) {
+  if (now > cue.until) return;
+  const p = (now - cue.start) / (cue.until - cue.start), a = Math.sin(Math.PI * Math.min(1, p)), k = Math.max(3, Math.min(D.W, D.H) / 90) * (1 + 0.12 * Math.sin(now / 160));
+  const cx = D.W / 2, cy = Math.max(k * 12, D.H * 0.15);
+  g.save(); g.globalAlpha = 0.85 * a;
+  g.fillStyle = "rgba(255,255,255,0.8)"; g.beginPath(); g.arc(cx, cy + k * 0.5, k * 5.5, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "#E07A8A";
+  for (const [x, y, w] of [[-2, 0, 2], [1, 0, 2], [-3, 1, 7], [-3, 2, 7], [-2, 3, 5], [-1, 4, 3], [0, 5, 1]]) g.fillRect(cx + (x - 0.5) * k, cy + (y - 2.5) * k, w * k, k);
+  g.restore();
+}
