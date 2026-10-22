@@ -68,13 +68,14 @@ export class Wash extends Game {
     if (this.mud.filter((m) => m).length <= 2) { this.mud.fill(false); this.phase = 1; sfx.ding(); setTimeout(() => this.prompt(), 400); }
   }
   press(p: Pt) {
-    if (this.phase === 0) { this.rub(p); return; }
+    if (this.phase === 0) { this.bp = { x: p.x, y: p.y }; this.bt = D.t; this.rub(p); return; }
     const r = this.carRect();
     if (this.phase === 1 && hit(p, this.soap)) { sfx.pop(); this.foam = Math.min(1, this.foam + 0.34); for (let i = 0; i < 6; i++) bubbles(rnd(r.x, r.x + r.w), rnd(r.y, r.y + r.h), 1); if (this.foam >= 1) { this.phase = 2; setTimeout(() => this.prompt(), 500); } }
     else if (this.phase === 2 && hit(p, this.hose)) { sfx.splash(); this.foam = Math.max(0, this.foam - 0.34); for (let i = 0; i < 8; i++) bubbles(rnd(r.x, r.x + r.w), r.y, 1, C.blue); if (this.foam <= 0.01) { this.phase = 3; this.prompt(); burst(this.cx, r.y, 10); setTimeout(() => { this.drive = 0.01; sfx.vroom(); }, 1600); } }
     else if (this.phase === 1 || this.phase === 2) { const t = this.phase === 1 ? this.soap : this.hose; this.taps++; if (this.taps % 3 === 0) this.prompt(); }
   }
-  drag2(p: Pt) { this.rub(p); }
+  bp: { x: number; y: number } | null = null; bt = -9;
+  drag2(p: Pt) { this.bp = { x: p.x, y: p.y }; this.bt = D.t; this.rub(p); }
   tick(dt: number) { if (this.drive > 0) { this.drive += dt * D.W * 0.3; if (this.drive > D.W * 0.8 && this.wait <= 0) this.win(D.W / 2, D.H * 0.4, "x_praise4"); } }
   paint() {
     { const gy = backdrop("plain", 0.66); if (!cover("bg-dusk")) { SC.rainTree(D.W * 0.12, gy, D.U * 1.1); SC.rainTree(D.W * 0.9, gy, D.U * 0.9); } } const u = this.u, r = this.carRect();
@@ -90,6 +91,7 @@ export class Wash extends Game {
     const pulse = (b: any) => (Math.sin(D.t * 3) > 0 ? 0 : D.U);
     if (this.phase === 1) iconBtn(this.soap, C.pink, () => { const b = this.soap; box(b.x + b.w * 0.3, b.y + b.h * 0.3 - pulse(b), b.w * 0.4, b.h * 0.55, C.white, D.U); R(b.x + b.w * 0.42, b.y + b.h * 0.15 - pulse(b), b.w * 0.16, b.h * 0.15, C.k); for (let i = 0; i < 3; i++) R(b.x + b.w * (0.2 + i * 0.25), b.y + b.h * 0.12, D.U * 2, D.U * 2, C.white); });
     if (this.phase === 2) iconBtn(this.hose, C.blue, () => { const b = this.hose; R(b.x + b.w * 0.2, b.y + b.h * 0.45 - pulse(b), b.w * 0.45, b.h * 0.18, C.green); R(b.x + b.w * 0.6, b.y + b.h * 0.38 - pulse(b), b.w * 0.15, b.h * 0.32, C.k); for (let i = 0; i < 3; i++) R(b.x + b.w * 0.8, b.y + b.h * (0.3 + i * 0.15), D.U * 2, D.U * 2, C.white); });
+    { const br = pic("wash-brush"); if (br && this.phase === 0 && this.bp && D.t - this.bt < 0.8) { const h = Math.max(MIN * 1.2, D.H * 0.22), w = h * br.naturalWidth / br.naturalHeight; g.save(); g.globalAlpha = Math.min(1, (0.8 - (D.t - this.bt)) * 4); g.translate(this.bp.x, this.bp.y); g.rotate(-0.35); g.drawImage(br, -w / 2, -h * 0.2, w, h); g.restore(); } }
   }
 }
 
@@ -208,7 +210,7 @@ export class Light extends Game {
 }
 function pcircS(x: number, y: number, r: number, c: string) { g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
 
-const LAMPY = [0.215, 0.43, 0.65]; // lamp centres as a fraction of the painted traffic-light height (measured)
+const LAMPY = [0.19, 0.405, 0.62]; // lamp centres as a fraction of the painted traffic-light height (measured)
 // 6. Build My Car ---------------------------------------------------------
 export class Build extends Game {
   id = "build"; rounds = 3; stage = 0; wheels = 0; piece: Item = mkItem(); u = 4; cx = 0; gy = 0; drive = 0; goBtn: any; col = C.red;

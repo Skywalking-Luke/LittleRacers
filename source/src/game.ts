@@ -1,5 +1,5 @@
 import { g, D, C, R, MIN, hit, Rect, Scene, Pt, go, burst, sfx, say, box, star, txt } from "./core";
-import { btnBox, homeIcon, speakerIcon, fitPic } from "./art";
+import { btnBox, homeIcon, speakerIcon, fitPic, pic } from "./art";
 import { S } from "./audio";
 let homeFn: () => Scene = null as any;
 export function setHome(f: () => Scene) { homeFn = f; }
@@ -67,7 +67,7 @@ class Done implements Scene {
   draw() {
     R(0, 0, D.W, D.H, C.bg); const s = Math.min(D.W, D.H);
     const b = Math.sin(Math.min(1, this.t * 1.5) * Math.PI) * D.U * 4;
-    star(D.W / 2, D.H * 0.33 - b, s * 0.16, C.yellow);
+    { const tr = this.game.id === "race" ? pic("trophy") : null; if (tr) { const k = Math.min(1, this.t * 1.2), e = 1 - Math.pow(1 - k, 3), h = s * 0.34 * (0.85 + 0.15 * e), w = h * tr.naturalWidth / tr.naturalHeight; g.save(); g.globalAlpha = e; g.drawImage(tr, D.W / 2 - w / 2, D.H * 0.33 - h * 0.6 - b * 0.5, w, h); g.restore(); } else star(D.W / 2, D.H * 0.33 - b, s * 0.16, C.yellow); }
     star(D.W / 2 - s * 0.26, D.H * 0.38, s * 0.08, C.pink); star(D.W / 2 + s * 0.26, D.H * 0.38, s * 0.08, C.lav);
     const a = this.again, h = this.home;
     iconBtn(a, C.green, () => { // replay arrow

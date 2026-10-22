@@ -1,5 +1,5 @@
 import { g, D, C, R, MIN, hit, Rect, Scene, Pt, go, star, pcirc, txt } from "./core";
-import { ART, veh, cloud, place, palm, btnBox, homeIcon, cover } from "./art";
+import { ART, veh, cloud, place, palm, btnBox, homeIcon, cover, pic } from "./art";
 import { moon, tree } from "./scenes";
 import { goHome } from "./game";
 import { say, stopVoice, bell, soft, S } from "./audio";
@@ -53,15 +53,18 @@ export class Bedtime implements Scene {
       R(0, gy, W, H - gy, this.sc === 3 ? "#4E6B55" : N.field);
     }
     const u = Math.max(2, Math.floor(Math.min(W / 70, H / 40)));
+    // ground line on each painted page, measured as a fraction of the background height (cover-cropped like cover())
+    const GL = [0.85, 0.8, 0.8, 0.745, 0.86, 0.965, 0.965, 0.965], bgi = pic(PAGE) || pic("bedtime-bg");
+    let vg = gy + u * 2; if (painted && bgi) { const sc2 = Math.max(W / bgi.naturalWidth, H / bgi.naturalHeight), bh = bgi.naturalHeight * sc2; vg = Math.min(H - u, (H - bh) / 2 + GL[this.sc] * bh); }
     switch (this.sc) {
-      case 0: if (!painted) { palm(W * 0.1, gy, u); place("home", W * 0.32, gy, u); } veh("jeep", W * 0.6, gy + u * 2, u * 1.4 | 0, C.green, { lights: this.tapFx > 0.6 }); break;
-      case 1: { if (!painted) { R(W * 0.45, gy - 22 * u, 40 * u, 22 * u, N.lilac); R(W * 0.45, gy - 24 * u, 40 * u, 3 * u, C.k); for (let i = 0; i < 4; i++) { const wx = W * 0.45 + (4 + i * 9) * u, wy = gy - 18 * u; const gl = g.createRadialGradient(wx + 2.5 * u, wy + 2.5 * u, 0, wx + 2.5 * u, wy + 2.5 * u, 7 * u); gl.addColorStop(0, "rgba(242,216,148,.35)"); gl.addColorStop(1, "rgba(242,216,148,0)"); g.fillStyle = gl; g.fillRect(wx - 5 * u, wy - 5 * u, 15 * u, 15 * u); R(wx, wy, 5 * u, 5 * u, N.lamp); } } const bx = Math.min(W * 0.62, W * 0.1 + this.st * W * 0.06); veh("bus", bx, gy + u * 2, u, C.blue, { lights: this.tapFx <= 0 }); if (this.tapFx > 0) R(bx + 9 * u, gy - 8 * u, 3 * u, 5 * u, C.k); break; }
-      case 2: { const tx = W * 0.3; if (!painted) tree(tx, gy, u * 2, "#3f5a47", { night: true }); veh("lorry", W * 0.58, gy + u * 2, u, C.yellow, { lights: this.lights > 0 }); if (this.lights > 1) pcirc(W * 0.58 + 13 * u, gy - 6 * u, u * 1.5, N.lamp, u); txt("z", W * 0.58 + 6 * u, gy - 20 * u - Math.sin(D.t) * u * 2, u * 4, N.cream, "center", false); break; }
-      case 3: { if (!painted) { for (let i = 0; i < 12; i++) R((i * W) / 12, gy + u * 2, u, u * 3, "#7a9a6a"); R(0, gy - u, W, u, "#6b6f86"); } const x = ((this.st * W * 0.05) % (W * 1.6)) - W * 0.3; veh("train", x, gy - u, u, C.red, { lights: true }); for (const p of this.puffs) star(p.x, p.y, u * (1 + Math.min(2, p.t)), `rgba(250,246,238,${Math.max(0, 1 - p.t / 6)})`, false); break; }
-      case 4: { veh("moto", W * 0.5, gy + u * 2, u * 1.6 | 0, C.red); if (painted) break; const s = this.tapFx > 0 ? 0 : 1; g.fillStyle = N.lilac; g.beginPath(); g.ellipse(W * 0.5, gy - 8 * u - s * u * 2, 14 * u, 9 * u, 0, Math.PI, 0); g.fill(); R(W * 0.5 - 14 * u, gy - 8 * u - s * u * 2, 28 * u, 7 * u + s * u * 2, N.lilac); break; }
+      case 0: if (!painted) { palm(W * 0.1, gy, u); place("home", W * 0.32, gy, u); } veh("jeep", W * 0.6, vg, u * 1.4 | 0, C.green, { lights: this.tapFx > 0.6 }); break;
+      case 1: { if (!painted) { R(W * 0.45, gy - 22 * u, 40 * u, 22 * u, N.lilac); R(W * 0.45, gy - 24 * u, 40 * u, 3 * u, C.k); for (let i = 0; i < 4; i++) { const wx = W * 0.45 + (4 + i * 9) * u, wy = gy - 18 * u; const gl = g.createRadialGradient(wx + 2.5 * u, wy + 2.5 * u, 0, wx + 2.5 * u, wy + 2.5 * u, 7 * u); gl.addColorStop(0, "rgba(242,216,148,.35)"); gl.addColorStop(1, "rgba(242,216,148,0)"); g.fillStyle = gl; g.fillRect(wx - 5 * u, wy - 5 * u, 15 * u, 15 * u); R(wx, wy, 5 * u, 5 * u, N.lamp); } } const bx = Math.min(W * 0.62, W * 0.1 + this.st * W * 0.06); veh("bus", bx, vg, u, C.blue, { lights: this.tapFx <= 0 }); if (this.tapFx > 0) R(bx + 9 * u, gy - 8 * u, 3 * u, 5 * u, C.k); break; }
+      case 2: { const tx = W * 0.3; if (!painted) tree(tx, gy, u * 2, "#3f5a47", { night: true }); veh("lorry", W * 0.58, vg, u, C.yellow, { lights: this.lights > 0 }); if (this.lights > 1) pcirc(W * 0.58 + 13 * u, gy - 6 * u, u * 1.5, N.lamp, u); txt("z", W * 0.58 + 6 * u, gy - 20 * u - Math.sin(D.t) * u * 2, u * 4, N.cream, "center", false); break; }
+      case 3: { if (!painted) { for (let i = 0; i < 12; i++) R((i * W) / 12, gy + u * 2, u, u * 3, "#7a9a6a"); R(0, gy - u, W, u, "#6b6f86"); } const x = ((this.st * W * 0.05) % (W * 1.6)) - W * 0.3; veh("train", x, painted ? vg : gy - u, u, C.red, { lights: true }); for (const p of this.puffs) star(p.x, p.y, u * (1 + Math.min(2, p.t)), `rgba(250,246,238,${Math.max(0, 1 - p.t / 6)})`, false); break; }
+      case 4: { const mv = veh("moto", W * 0.5, vg, u * 1.6 | 0, C.red); if (painted) { const bl = pic("blanket"); if (bl) { const bw = mv.w * 0.62, bh2 = bw * bl.naturalHeight / bl.naturalWidth, br = Math.sin(D.t * 0.5) * u * 0.3; g.drawImage(bl, W * 0.5 - mv.w * 0.42, vg - mv.h * 0.66 + br, bw, bh2); } break; } const s = this.tapFx > 0 ? 0 : 1; g.fillStyle = N.lilac; g.beginPath(); g.ellipse(W * 0.5, gy - 8 * u - s * u * 2, 14 * u, 9 * u, 0, Math.PI, 0); g.fill(); R(W * 0.5 - 14 * u, gy - 8 * u - s * u * 2, 28 * u, 7 * u + s * u * 2, N.lilac); break; }
       case 5: case 6: case 7: {
         const kinds = ["jeep", "bus", "lorry", "moto"], cols = [C.green, C.blue, C.yellow, C.red];
-        kinds.forEach((k, i) => veh(k, W * (0.14 + i * 0.24), gy + u * 2, Math.max(1, u * 0.62),  cols[i], { lights: this.sc === 5 || (this.sc === 6 && this.st < 20 - i * 4) }));
+        kinds.forEach((k, i) => veh(k, W * (0.14 + i * 0.24), vg, Math.max(1, u * 0.62),  cols[i], { lights: this.sc === 5 || (this.sc === 6 && this.st < 20 - i * 4) }));
         if (this.sc === 5) { // ported from Sylphy's twinkle-stars.js: soft pop-in, gentle blink, the newest star glows while its number is spoken
           const SP = [[18, 22], [40, 12], [62, 26], [80, 14], [50, 34]], rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
           for (let i = 0; i < this.stars; i++) { const age = D.t - (this.sb[i] ?? D.t), e = Math.min(1, age / 0.9), pop = 1 - Math.pow(1 - e, 3), blink = rm || age < 0.9 ? 1 : 0.88 + 0.12 * Math.cos(((age - 0.9) / 2.4) * Math.PI * 2), x = W * SP[i][0] / 100, y = gy * SP[i][1] / 100 + U * 4, r = U * 3.4 * pop * blink;

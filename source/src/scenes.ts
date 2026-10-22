@@ -136,7 +136,7 @@ export function shophouses(x0: number, x1: number, gy: number, u: number) {
 }
 /** highway signboard to the kampung */
 export function kampungSign(x: number, gy: number, u: number, label: string) {
-  if (prop("sign-kampung", x, gy, 24 * u)) { g.fillStyle = "#5a4636"; g.font = `600 ${Math.round(3 * u)}px Fredoka, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(label, x, gy - 18.5 * u); return; }
+  if (prop("sign-kampung", x, gy, 24 * u)) { g.fillStyle = "#5a4636"; g.font = `600 ${Math.round(Math.min(3.4 * u, (13.5 * u) / (label.length * 0.58)))}px Fredoka, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(label, x, gy - 15.8 * u); return; } // board centre measured at 34% of the painted sign height
   skLine([[x - 6 * u, gy], [x - 6 * u, gy - 14 * u]], u); skLine([[x + 6 * u, gy], [x + 6 * u, gy - 14 * u]], u);
   sk(rrPts(x - 9 * u, gy - 21 * u, 18 * u, 8 * u, u), "#7FB7B0", lw(u)); g.fillStyle = "#FFFFFF"; g.font = `600 ${Math.round(3.2 * u)}px Fredoka, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(label, x, gy - 17 * u);
 }
