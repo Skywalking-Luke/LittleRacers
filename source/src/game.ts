@@ -60,7 +60,7 @@ export function drizzle() { g.fillStyle = "rgba(255,255,255,.55)"; const u = D.U
 class Done implements Scene {
   again: Rect; home: Rect; t = 0;
   constructor(public game: Game) {}
-  enter() { sfx.fanfare(); say("x_done"); burst(D.W / 2, D.H * 0.35, 20); }
+  enter() { sfx.applause(); say("x_done"); burst(D.W / 2, D.H * 0.35, 20); }
   layout() { const s = Math.max(MIN * 1.4, Math.min(D.W, D.H) * 0.22); this.again = { x: D.W / 2 - s - D.U * 4, y: D.H * 0.62, w: s, h: s }; this.home = { x: D.W / 2 + D.U * 4, y: D.H * 0.62, w: s, h: s }; }
   update(dt: number) { this.t += dt; }
   draw() {

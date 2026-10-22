@@ -44,13 +44,24 @@ export const sfx = {
   boop() { tone(300, 0.15, "triangle", 0.08, 0, -80); },
   cheer() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.06, i * 0.1)); },
   fanfare() { [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, "triangle", 0.06, i * 0.15)); },
+  applause() { // ~2 s of soft, synthesised clapping + a gentle cheer
+    if (S.mute || !ac) return;
+    for (let i = 0; i < 46; i++) { const t = i * 0.042 + Math.random() * 0.03, env = Math.min(1, i / 8) * Math.min(1, (46 - i) / 14); noise(0.035, 0.035 * env, t, 1200 + Math.random() * 1500); }
+    [392, 494, 587].forEach((f, i) => tone(f, 0.9, "sine", 0.018, 0.15 + i * 0.06, 40));
+  },
   beep() { tone(880, 0.1, "sine", 0.05); },
 };
 
 // ---- voice: recorded mp3 (listed in voice/manifest.json) or speechSynthesis ----
 const BASE = (import.meta as any).env.BASE_URL || "/LittleRacers/";
 let recorded = new Set<string>();
-fetch(BASE + "voice/manifest.json").then((r) => (r.ok ? r.json() : [])).then((a) => { if (Array.isArray(a)) recorded = new Set(a.map(String)); }).catch(() => {});
+// family mode: a private copy whose own voice/ folder (Luke's recordings) is checked first
+export const FAMILY = !!(window as any).LR_FAMILY;
+const FAM_BASE = location.pathname.replace(/[^/]*$/, "");
+let family = new Set<string>();
+const loadList = (url: string, set: (s: Set<string>) => void) => fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : [])).then((a) => { if (Array.isArray(a)) set(new Set(a.map(String))); }).catch(() => {});
+loadList(BASE + "voice/manifest.json", (x) => (recorded = x));
+if (FAMILY) loadList(FAM_BASE + "voice/manifest.json", (x) => (family = x));
 let curAudio: HTMLAudioElement | null = null;
 export function stopVoice() {
   try { speechSynthesis.cancel(); } catch (e) {}
@@ -73,18 +84,25 @@ export function text(key: string, vars: Record<string, string> = {}) {
   }
   return s;
 }
+/** clip file stem: key, plus the filled-in values for templated lines (e.g. x_col_ask__merah) */
+export function clipName(key: string, vars?: Record<string, string>) {
+  if (!vars) return key;
+  const v = Object.keys(vars).sort().map((k) => vars[k]).join("_").toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return key + "__" + v;
+}
 export function word(key: string) { return V[key] ? V[key][S.lang] : key; }
 /** Speak a line. cut=true stops whatever is playing first. Resolves when done (or after a safety timeout). */
 export function say(key: string, vars?: Record<string, string>, cut = true, rate = 0.9): Promise<void> {
   if (cut) stopVoice();
   if (S.mute) return new Promise((r) => setTimeout(r, 300));
-  const file = key + "_" + S.lang + ".mp3";
+  const file = clipName(key, vars) + "_" + S.lang + ".mp3";
   return new Promise((res) => {
     let done = false; const fin = () => { if (!done) { done = true; res(); } };
     const s = text(key, vars);
     setTimeout(fin, 1200 + s.length * 90 / rate * 0.9);
-    if (!vars && recorded.has(file)) {
-      const a = new Audio(BASE + "voice/" + file); curAudio = a;
+    const src = family.has(file) ? FAM_BASE + "voice/" + file : recorded.has(file) ? BASE + "voice/" + file : "";
+    if (src) {
+      const a = new Audio(src); curAudio = a;
       a.onended = fin; a.onerror = fin; a.play().catch(fin); return;
     }
     try {
