@@ -70,8 +70,7 @@ export function go(s: Scene) { if (scene && scene.leave) scene.leave(); stopVoic
 
 export function resize() {
   D.dpr = Math.min(2, window.devicePixelRatio || 1);
-  const vv: any = (window as any).visualViewport, de = document.documentElement;
-  D.W = Math.floor(Math.min(window.innerWidth, de.clientWidth || 1e9, vv ? vv.width * (vv.scale || 1) : 1e9)); D.H = Math.floor(Math.min(window.innerHeight, de.clientHeight || 1e9, vv ? vv.height * (vv.scale || 1) : 1e9));
+  D.W = window.innerWidth; D.H = window.innerHeight;
   cv.width = Math.round(D.W * D.dpr); cv.height = Math.round(D.H * D.dpr);
   cv.style.width = D.W + "px"; cv.style.height = D.H + "px";
   g.setTransform(D.dpr, 0, 0, D.dpr, 0, 0); g.imageSmoothingEnabled = false;
@@ -103,13 +102,8 @@ export function loop(now: number) {
   requestAnimationFrame(loop);
 }
 export function fullscreen() {
-  // iPad/Brave: requestFullscreen may be missing, throw, or return no promise. Never let it block starting a game.
-  try {
-    const d: any = document.documentElement;
-    if (document.fullscreenElement || !d.requestFullscreen) return;
-    const r = d.requestFullscreen();
-    if (r && typeof r.then === "function") r.then(() => { try { (screen.orientation as any).unlock && (screen.orientation as any).unlock(); } catch (e) {} }).catch(() => {});
-  } catch (e) {}
+  const d: any = document.documentElement;
+  if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen().then(() => { try { (screen.orientation as any).unlock && (screen.orientation as any).unlock(); } catch (e) {} }).catch(() => {});
 }
 export { sfx, say };
 export const cur = () => scene;
