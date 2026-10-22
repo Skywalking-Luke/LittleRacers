@@ -1,6 +1,6 @@
 import { cur } from "./core";
 import { g, D, C, R, MIN, hit, Rect, Scene, Pt, go, resize, loop, sfx, say, box, txt, star, fullscreen, ptri, pcirc } from "./core";
-import { veh, place, garage, shape, btnBox, speakerIcon, backdrop } from "./art";
+import { veh, place, garage, shape, btnBox, speakerIcon, backdrop, homeIcon } from "./art";
 import { setHome, drizzle } from "./game";
 import { S, setLang, setMute, setMusic, setRain, unlock } from "./audio";
 import { Beep, Wash, Peek, ColourPark, Light, Build } from "./games1";
@@ -30,11 +30,12 @@ let playSec = 0, breakShown = false;
 setInterval(() => { if (document.visibilityState === "visible") playSec++; }, 1000);
 
 class Hub implements Scene {
-  btns: { r: Rect; d: GDef }[] = []; ages: { r: Rect; a: number }[] = []; lang: Rect; par: Rect; bed: Rect; hold = 0; holding = false; parent = false; pbtn: Record<string, Rect> = {}; pressed = -1; brk = false; t = 0;
+  btns: { r: Rect; d: GDef }[] = []; ages: { r: Rect; a: number }[] = []; lang: Rect; par: Rect; bed: Rect; home: Rect; hh = 0; hHold = false; hWig = 0; hHint = 0; hold = 0; holding = false; parent = false; pbtn: Record<string, Rect> = {}; pressed = -1; brk = false; t = 0;
   enter() { if (playSec > 600 && !breakShown) { breakShown = true; this.brk = true; setTimeout(() => say("x_break"), 300); } }
   layout() {
     const land = D.W > D.H, u = D.U, s = Math.max(MIN, Math.round(Math.min(D.W, D.H) * 0.12));
     this.lang = { x: D.W - s * 1.6 - u * 3, y: u * 3, w: s * 1.6, h: s };
+    this.home = { x: u * 3, y: u * 3, w: s * 1.6, h: s };
     this.par = { x: u * 3, y: D.H - s - u * 3, w: s, h: s };
     this.bed = { x: D.W - s * 2.2 - u * 3, y: D.H - s * 1.1 - u * 3, w: s * 2.2, h: s * 1.1 };
     const top = s + u * 8, bottom = D.H - s - u * 6; this.btns = []; this.ages = [];
@@ -53,7 +54,7 @@ class Hub implements Scene {
     const py0 = Math.max(u * 18, D.H / 2 - (rows * (ph + u * 3)) / 2);
     keys.forEach((k, i) => { const c = two ? i % 2 : 0, r = two ? Math.floor(i / 2) : i; this.pbtn[k] = { x: px0 + c * (pw + gap), y: py0 + r * (ph + u * 3), w: pw, h: ph }; });
   }
-  update(dt: number) { this.t += dt; if (this.holding) { this.hold += dt; if (this.hold >= 3) { this.holding = false; this.hold = 0; this.parent = true; sfx.ding(); say("x_parent"); } } }
+  update(dt: number) { this.t += dt; this.hWig = Math.max(0, this.hWig - dt); this.hHint = Math.max(0, this.hHint - dt); if (this.hHold) { this.hh += dt; if (this.hh >= 2) { this.hHold = false; this.hh = 0; sfx.ding(); location.href = "https://lhcars.my/"; } } if (this.holding) { this.hold += dt; if (this.hold >= 3) { this.holding = false; this.hold = 0; this.parent = true; sfx.ding(); say("x_parent"); } } }
   draw() {
     const u = D.U; R(0, 0, D.W, D.H, C.bg);
     backdrop("kampung", 0.94);
@@ -61,6 +62,10 @@ class Hub implements Scene {
     for (const a of this.ages) { const r = a.r; pcirc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, C.k); pcirc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - u, C.white); txt(String(a.a), r.x + r.w / 2, r.y + r.h / 2 + 2, r.h * 0.5, C.red, "center", false); }
     this.btns.forEach((b, i) => { const r = b.r, p = this.pressed === i; btnBox(r.x, r.y, r.w, r.h, b.d.col, p); g.save(); g.beginPath(); g.rect(r.x + u, r.y + u, r.w - 2 * u, r.h - 2 * u); g.clip(); b.d.icon(r.x + (p ? u : 0), r.y + (p ? u : 0), r.w); g.restore(); });
     const l = this.lang; btnBox(l.x, l.y, l.w, l.h, C.white); txt(S.lang === "en" ? "EN" : "BM", l.x + l.w / 2, l.y + l.h / 2, l.h * 0.32, S.lang === "en" ? C.blue : C.red);
+    { const hm = this.home, wx = this.hWig > 0 ? Math.sin(D.t * 30) * u * 1.5 : 0, x = hm.x + wx; btnBox(x, hm.y, hm.w, hm.h, C.cream);
+      const ic = hm.h * 0.62; homeIcon(x + u * 2, hm.y + (hm.h - ic) / 2, ic); txt("HOME", x + u * 3 + ic + (hm.w - ic - u * 5) / 2, hm.y + hm.h / 2, Math.min(hm.h * 0.2, (hm.w - ic - u * 6) / 4.4), C.k, "center", false);
+      if (this.hHold) { g.strokeStyle = C.green; g.lineWidth = u * 2; g.beginPath(); g.arc(hm.x + hm.w / 2, hm.y + hm.h / 2, hm.h * 0.62, -Math.PI / 2, -Math.PI / 2 + (this.hh / 2) * Math.PI * 2); g.stroke(); }
+      if (this.hHint > 0) { const fs = Math.max(10, Math.min(14, D.W / 32)), tw = fs * 16.5, ty = hm.y + hm.h + u * 3; box(hm.x, ty, tw, fs * 2.4, C.white, u); txt("HOLD TO GO HOME", hm.x + tw / 2, ty + fs * 1.2, fs * 0.8, C.k, "center", false); } }
     const p = this.par; btnBox(p.x, p.y, p.w, p.h, C.grey); // lock icon + hold ring
     R(p.x + p.w * 0.3, p.y + p.h * 0.45, p.w * 0.4, p.h * 0.32, C.k); R(p.x + p.w * 0.36, p.y + p.h * 0.22, p.w * 0.06, p.h * 0.25, C.k); R(p.x + p.w * 0.58, p.y + p.h * 0.22, p.w * 0.06, p.h * 0.25, C.k); R(p.x + p.w * 0.36, p.y + p.h * 0.2, p.w * 0.28, p.h * 0.06, C.k);
     if (this.holding) { g.strokeStyle = C.green; g.lineWidth = u * 2; g.beginPath(); g.arc(p.x + p.w / 2, p.y + p.h / 2, p.w * 0.62, -Math.PI / 2, -Math.PI / 2 + (this.hold / 3) * Math.PI * 2); g.stroke(); }
@@ -94,6 +99,7 @@ class Hub implements Scene {
       else if (hit(p, b.lang)) { setLang(S.lang === "en" ? "bm" : "en"); say("x_lang"); } else if (hit(p, b.arcade)) { location.href = "https://lhcars.my/"; } else if (hit(p, b.close)) this.parent = false;
       return;
     }
+    if (hit(p, this.home, 4)) { this.hHold = true; this.hh = 0; sfx.tap(); return; }
     if (hit(p, this.par, 4)) { this.holding = true; this.hold = 0; return; }
     if (hit(p, this.bed, 4)) { sfx.tap(); go(new Bedtime()); return; }
     if (hit(p, this.lang, 4)) { setLang(S.lang === "en" ? "bm" : "en"); sfx.tap(); say("x_lang"); return; }
@@ -101,6 +107,7 @@ class Hub implements Scene {
   }
   up(p: Pt) {
     this.holding = false; this.hold = 0;
+    if (this.hHold) { this.hHold = false; if (this.hh < 2) { this.hWig = 0.5; this.hHint = 2.5; sfx.boop(); } this.hh = 0; }
     if (this.pressed >= 0) { const b = this.btns[this.pressed]; this.pressed = -1; if (hit(p, b.r, 10)) { sfx.tap(); fullscreen(); const s = b.d.make(); go(s); say(b.d.name, undefined, true).then(() => { if ((window as any).__cur === s) (s as any).prompt && (s as any).prompt(); }); (window as any).__cur = s; } }
   }
 }
