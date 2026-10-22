@@ -247,7 +247,7 @@ export class Helper extends Game {
 const ROUTES = [["petrol", "atuk"], ["petrol", "durian", "atuk"], ["petrol", "durian", "atuk"]];
 const EXTRA = [["durian"], ["school"], ["school", "pasar"]];
 export class Kampung extends Game {
-  id = "kampung"; rounds = 3; route: string[] = []; tok = 0; places: Item[] = []; step = 0; showing = true; car = { x: 0, y: 0, tx: 0, ty: 0 }; showI = -1; pu = 3;
+  id = "kampung"; rounds = 3; route: string[] = []; tok = 0; places: Item[] = []; step = 0; showing = true; car = { x: 0, y: 0, tx: 0, ty: 0 }; showI = -1; pu = 3; signAt = { x: 0, y: 0 };
   start() {
     this.route = ROUTES[this.round]; this.step = 0; this.showing = true; this.showI = -1;
     this.places = shuffle([...this.route, ...EXTRA[this.round]]).map((k) => mkItem({ k, done: false }));
@@ -265,15 +265,19 @@ export class Kampung extends Game {
   }
   prompt() { if (this.showing || this.step === 0) this.show(); else say("x_kp_next"); }
   place() {
-    const land = D.W > D.H, n = this.places.length, top = this.back.y + this.back.h + D.U * 6;
-    this.pu = Math.max(2, Math.floor(Math.min(land ? D.W / (n * 32) : D.W / 34, land ? D.H / 50 : (D.H - top) / (n * 30))));
+    // stops stand on the painted ground band of bg-kampung (below its horizon), spaced in a grid with no overlaps; car + sign keep clear of the HUD
+    const land = D.W > D.H, n = this.places.length, u = D.U, hud = this.back.y + this.back.h + u * 2;
+    const gTop = Math.max(hud + u * 10, coverY("bg-kampung", 0.74) ?? D.H * 0.62), bot = D.H - u * 2;
+    const cols = land ? n : Math.min(3, n), rows = Math.ceil(n / cols), x0 = land ? D.W * 0.2 : D.W * 0.02, x1 = D.W * 0.98;
+    const cw = (x1 - x0) / cols, ch = (bot - gTop - u * 4) / rows;
+    this.pu = Math.max(2, Math.floor(Math.min(cw / 33, ch / 28)));
     this.places.forEach((p, i) => {
+      const r = Math.floor(i / cols), inRow = Math.min(cols, n - r * cols), c = i % cols, rx0 = x0 + ((cols - inRow) * cw) / 2;
       p.w = Math.max(MIN, 30 * this.pu); p.h = Math.max(MIN, 26 * this.pu);
-      if (land) { p.x = p.hx = D.W * (i + 0.5) / n + D.W * 0.04; p.y = p.hy = D.H * (i % 2 ? 0.5 : 0.72); }
-      else { p.x = p.hx = D.W * (i % 2 ? 0.62 : 0.38); p.y = p.hy = top + (D.H - top) * (i + 0.6) / (n + 0.4); }
+      const bottom = bot - (rows - 1 - r) * ch; p.x = p.hx = rx0 + cw * (c + 0.5); p.y = p.hy = bottom - p.h * 0.45;
     });
-    if (!this.car.x) { this.car.x = this.car.tx = D.U * 14; this.car.y = this.car.ty = D.H * 0.9; }
-    if (this.step === 0) { this.car.x = this.car.tx = land ? D.U * 14 : D.W * 0.12; this.car.y = this.car.ty = land ? D.H * 0.92 : top + D.U * 4; }
+    this.signAt = land ? { x: D.W * 0.1, y: gTop + u * 6 } : { x: D.W * 0.86, y: gTop };
+    if (this.step === 0 || !this.car.x) { this.car.x = this.car.tx = land ? D.W * 0.1 : D.W * 0.16; this.car.y = this.car.ty = land ? bot : gTop; }
   }
   press(p: Pt) {
     if (this.showing) return;
@@ -297,8 +301,8 @@ export class Kampung extends Game {
       if (p.done) star(p.x + p.w * 0.45, p.y - p.h * 0.45, u * 3, C.yellow);
     }
     veh("car", this.car.x, this.car.y, Math.max(2, this.pu), C.red, { flip: this.car.tx < this.car.x - 2 });
-    // signpost stands on the sandy ground in the bottom-right corner, drawn last so the stops never hide it
-    SC.kampungSign(D.W - D.U * 9, D.H - D.U * 1.5, D.U * 0.8, S.lang === "bm" ? "KAMPUNG →" : "KAMPUNG →");
+    // signpost stands on the ground beside the car start, clear of the stops and their highlight
+    SC.kampungSign(this.signAt.x, this.signAt.y, D.U * 0.8, S.lang === "bm" ? "KAMPUNG →" : "KAMPUNG →");
   }
 }
 

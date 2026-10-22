@@ -22,6 +22,8 @@ export const pic = (k: string): HTMLImageElement | null => IMG[k] || null;
 /** draw an opaque painted background covering the screen (centre-cropped) */
 export function cover(k: string) { const im = IMG[k]; if (!im) return false; const s = Math.max(D.W / im.naturalWidth, D.H / im.naturalHeight), w = im.naturalWidth * s, h = im.naturalHeight * s; g.drawImage(im, (D.W - w) / 2, (D.H - h) / 2, w, h); return true; }
 /** bottom-centred painted prop of height h (px) standing on gy */
+/** like prop() but never wider than maxW */
+export function propFit(k: string, cx: number, gy: number, h: number, maxW: number) { const im = IMG[k]; if (!im) return false; const a = im.naturalWidth / im.naturalHeight; return prop(k, cx, gy, Math.min(h, maxW / a)); }
 export function prop(k: string, cx: number, gy: number, h: number) { const im = IMG[k]; if (!im) return false; const w = h * im.naturalWidth / im.naturalHeight; g.drawImage(im, cx - w / 2, gy - h, w, h); return true; }
 /** painted asset fitted (contain) into a box, centred */
 export function fitPic(k: string, x: number, y: number, w: number, h: number, src?: CanvasImageSource) { const im = IMG[k]; if (!im) return false; const a = im.naturalWidth / im.naturalHeight, ww = Math.min(w, h * a), hh = ww / a; g.drawImage(src || im, x + (w - ww) / 2, y + (h - hh) / 2, ww, hh); return true; }
@@ -171,7 +173,8 @@ export function face(x: number, y: number, u: number, happy = true) { g.fillStyl
 
 // ---- places: (cx, ground y, u) ----
 export function place(kind: string, cx: number, gy: number, u: number) {
-  { const m: Record<string, [string, number]> = { home: ["house-stilt", 24], toll: ["toll-booth", 20] }; const q = m[kind]; if (q && prop(q[0], cx, gy, q[1] * u)) return; }
+  { const m: Record<string, [string, number]> = { home: ["house-stilt", 24], toll: ["toll-booth", 20], petrol: ["petrol-station", 24], durian: ["fruit-stall", 20], atuk: ["house-atuk", 24] }; const q = m[kind];
+    if (q && IMG[q[0]]) { if (kind === "atuk" && IMG["atuk-wave"]) { propFit(q[0], cx - 4 * u, gy, q[1] * u, 23 * u); g.save(); g.translate(cx + 11 * u, gy); g.rotate(Math.sin(D.t * 1.6) * 0.04); propFit("atuk-wave", 0, 0, 15 * u, 8 * u); g.restore(); } else propFit(q[0], cx, gy, q[1] * u, 31 * u); return; } }
   const X = (i: number) => cx + i * u, Y = (i: number) => gy - i * u, lw = Math.max(1.2, u * 0.6);
   const B = (ix: number, iy: number, w: number, h: number, c: string, r = 1) => sk(rrPts(X(ix), Y(iy), w * u, h * u, r * u), c, lw);
   const Win = (ix: number, iy: number, w: number, h: number) => { B(ix, iy, w, h, C.win, 0.6); skLine([[X(ix + w / 2), Y(iy)], [X(ix + w / 2), Y(iy - h)]], lw * 0.6); };
