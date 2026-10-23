@@ -318,14 +318,14 @@ function hills(gy: number, c: string, amp: number, sd: number) {
   g.fillStyle = c; g.fill(); g.strokeStyle = "rgba(74,74,72,.18)"; g.lineWidth = Math.max(1, U * 0.4); g.stroke();
 }
 /** scene backdrops from the theme guide */
-export function backdrop(kind: "kampung" | "taman" | "dusk" | "pasar" | "plain", horizon = 0.62) {
+export function backdrop(kind: "kampung" | "taman" | "dusk" | "pasar" | "plain", horizon = 0.62, cloudLimit = 1e9) {
   const { W, H, U } = D, gy = H * horizon;
   if (kind !== "plain" && cover("bg-" + kind)) return gy;
   const top = kind === "dusk" ? "#E9C9B8" : kind === "pasar" ? "#9C98BC" : C.sky, bot = kind === "dusk" ? "#F6E3C8" : kind === "pasar" ? "#C4B6DE" : "#EEF4EC";
   const gr = g.createLinearGradient(0, 0, 0, gy); gr.addColorStop(0, top); gr.addColorStop(1, bot); g.fillStyle = gr; g.fillRect(0, 0, W, gy + 1);
   if (kind === "dusk") sun(W * 0.8, gy * 0.72, U * 8);
   else if (kind === "pasar") { for (let i = 0; i < 6; i++) star(W * (0.1 + i * 0.16), H * 0.12 + (i % 2) * U * 3, U * (0.9 + 0.2 * Math.sin(D.t * 0.7 + i)), "#FAF6EE", false); }
-  else { cloud(W * 0.14 + Math.sin(D.t / 8) * 12, H * 0.1, U * 2.5); cloud(W * 0.7 + Math.cos(D.t / 9) * 12, H * 0.16, U * 2); }
+  else { for (const [cx, cy, cu, dx] of [[W * 0.14 + Math.sin(D.t / 8) * 12, H * 0.1, U * 2.5, 0], [W * 0.7 + Math.cos(D.t / 9) * 12, H * 0.16, U * 2, 0]]) { let y = cy, k = cu; if (y + 4.5 * k > cloudLimit - U) { const room = cloudLimit - U - H * 0.02; k = Math.min(k, room / 9); if (k < U * 0.9) continue; y = cloudLimit - U - 4.5 * k; } cloud(cx, y, k); } }
   if (horizon < 0.9) { hills(gy, kind === "pasar" ? "#8E9AA8" : kind === "dusk" ? "#C9B7A0" : "#C9DCC0", Math.min(H * 0.12, U * 16), 3); hills(gy, kind === "pasar" ? "#97A88E" : kind === "dusk" ? "#B9C29A" : "#B3CDA2", Math.min(H * 0.07, U * 9), 9); }
   ground(gy, kind === "pasar" ? "#A9BD9A" : C.grass, kind === "pasar" ? "#8FA67F" : "#94B583");
   if (kind === "kampung") { palm(W * 0.06, gy, U); palm(W * 0.92, gy, U); }

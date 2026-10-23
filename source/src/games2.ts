@@ -157,13 +157,13 @@ export class ShapeGarage extends Game {
   tick(dt: number) { if (this.drag !== this.car) ease(this.car, dt, 5); this.car.wig = Math.max(0, this.car.wig - dt); if (this.inT) this.inT = Math.min(1, this.inT + dt); }
   paint() {
     const hill = pic("shape-hill");
-    if (hill) { const t0 = this.tun[0], gb = t0 ? t0.y + t0.h / 2 : D.H * 0.5; backdrop("plain", Math.min(0.62, Math.max(0.3, (gb - D.U * 4) / D.H))); }
+    if (hill) { const t0 = this.tun[0], gb = t0 ? t0.y + t0.h / 2 : D.H * 0.5; backdrop("plain", Math.min(0.62, Math.max(0.3, (gb - D.U * 4) / D.H)), t0 ? gb - (t0.w * 1.18 * hill.naturalHeight) / hill.naturalWidth : 1e9); }
     else { const gy = backdrop("plain", 0.45); const t0 = this.tun[0]; SC.hillside(D.W / 2, t0 ? t0.y - t0.h * 0.75 : gy * 0.5, Math.max(gy, t0 ? t0.y + t0.h / 2 : gy), D.U); } const u = D.U;
     for (const t of this.tun) { const x = t.x - t.w / 2, y = t.y - t.h / 2; if (hill) { const hw = t.w * 1.18, hh = hw * hill.naturalHeight / hill.naturalWidth, gb = t.y + t.h / 2; shadow(t.x, gb, hw * 0.8); g.drawImage(hill, t.x - hw / 2, gb - hh + u, hw, hh); const sg = pic("shape-tunnel-sign"); if (sg) { const sz = Math.min(t.w * 0.55, hh * 0.7), sb = gb + sz * 1.0 + u * 2; shadow(t.x, sb, sz * 0.5); g.drawImage(sg, t.x - sz / 2, sb - sz, sz, sz); shape(t.s, t.x, sb - sz * 0.675, sz * 0.17, t.col, u); } else { const sy = gb - hh * 0.72; box(t.x - hh * 0.12, sy - hh * 0.12, hh * 0.24, hh * 0.24, t.col, u); shape(t.s, t.x, sy, hh * 0.09, C.white, u); } continue; } box(x, y, t.w, t.h, t.col, u); R(x + t.w * 0.15, y + t.h * 0.45, t.w * 0.7, t.h * 0.55 - u, "#5e5a6e"); shape(t.s, t.x, y + t.h * 0.24, t.h * 0.15, C.white, u); }
     const c = this.car; if (this.inT >= 1) return;
     g.save(); if (this.inT) g.globalAlpha = 1 - this.inT;
     const gy = c.y + c.h * 0.35; veh("car", c.x + wx(c), gy, c.u, c.col);
-    R(c.x + wx(c) - u / 2, gy - c.u * 11 - c.h * 0.15, u, c.h * 0.15, C.k); shape(c.s, c.x + wx(c), gy - c.u * 11 - c.h * 0.3, c.h * 0.16, C.white, u);
+    { const r = c.h * 0.16, rx = c.x + wx(c), rt = gy - c.u * 11; shape(c.s, rx, rt - r + u * 2, r, C.white, u); }
     g.restore();
   }
 }
@@ -173,11 +173,12 @@ const WORDS = { en: [["CAR", "car"], ["BUS", "bus"], ["VAN", "van"]], bm: [["BAS
 /** painted wooden letter tile (warm glow when it is the one to find / found), else the code box */
 function lTile(x: number, y: number, w: number, h: number, col: string, u: number) { const im = pic("letter-tile"); if (!im) { box(x, y, w, h, col, u); return; } if (col === C.yellow) { const gl = g.createRadialGradient(x + w / 2, y + h / 2, 0, x + w / 2, y + h / 2, w * 0.8); gl.addColorStop(0, "rgba(255,226,140,.8)"); gl.addColorStop(1, "rgba(255,226,140,0)"); g.fillStyle = gl; g.fillRect(x - w * 0.3, y - h * 0.3, w * 1.6, h * 1.6); } g.drawImage(im, x, y, w, h); }
 export class LetterRoad extends Game {
-  id = "letter"; rounds = 3; w = "CAR"; vk = "car"; got = 0; lane = 1; carL = 1; wave: { l: string; lane: number; x: number; hit?: boolean }[] = []; u = 4; scroll = 0; lanesY: number[] = []; lh = 0; art = false; yR = 0; rs = 1; lhs: number[] = [0, 0, 0]; bgg = { top: 0, h: 0, w: 0, x: 0 };
+  id = "letter"; rounds = 3; w = "CAR"; vk = "car"; got = 0; lane = 1; carL = 1; wave: { l: string; lane: number; x: number; hit?: boolean; age?: number }[] = []; u = 4; scroll = 0; lanesY: number[] = []; lh = 0; art = false; sx = 1.15; yR = 0; rs = 1; lhs: number[] = [0, 0, 0]; bgg = { top: 0, h: 0, w: 0, x: 0 };
   start() { const W = WORDS[S.lang][this.round]; this.w = W[0]; this.vk = W[1]; this.got = 0; this.lane = this.carL = 1; this.newWave(); this.prompt(); }
   prompt() { const spelled = this.w.split("").join(", "); if ((S.lang === "en" && this.w === "CAR") || (S.lang === "bm" && this.w === "BAS")) say("30"); else say("x_letter_ask", { w: spelled, W: word("v_" + this.vk) }); }
-  newWave() { const right = ri(0, 2), want = this.w[this.got]; const pool = "ABCDEFGKLMNOPRSTUV".split("").filter((c) => c !== want); this.wave = [0, 1, 2].map((l) => ({ l: l === right ? want : pool[ri(0, pool.length - 1)], lane: l, x: 1.15 })); if (Math.random() < 0.4) this.wave.splice(this.wave.findIndex((w) => w.lane !== right), 1); }
-  geo() { const im = pic("bg-padi-letter"), rd = pic("letter-road"); if (!im || !rd) return false; const land = D.W > D.H, z = land ? 1.35 : 1.15, sc = Math.max(D.W / im.naturalWidth, (D.H * z) / im.naturalHeight), h = im.naturalHeight * sc, w = im.naturalWidth * sc; this.bgg = { top: D.H - h, h, w, x: (D.W - w) / 2 }; this.yR = this.bgg.top + 0.665 * h; this.rs = (D.H - this.yR) / rd.naturalHeight; const sx = this.rs; this.lanesY = [92, 241, 410].map((c) => this.yR + c * sx); this.lhs = [140, 159, 179].map((b) => b * sx); this.lh = (this.lhs[0] + this.lhs[1] + this.lhs[2]) / 3; this.u = fitU("car", Math.max(D.W * 0.18, Math.min(D.W * 0.28, this.lhs[2] * 1.3)), this.lhs[2] * 0.7); return true; }
+  newWave() { if (this.art || this.geo()) this.art = true; const right = ri(0, 2), want = this.w[this.got]; const pool = "ABCDEFGKLMNOPRSTUV".split("").filter((c) => c !== want); this.wave = [0, 1, 2].map((l) => ({ l: l === right ? want : pool[ri(0, pool.length - 1)], lane: l, x: this.sx, age: 0 })); if (Math.random() < 0.4) this.wave.splice(this.wave.findIndex((w) => w.lane !== right), 1); }
+  geo() { const im = pic("bg-padi-letter"), rd = pic("letter-road"); if (!im || !rd) return false; const land = D.W > D.H, z = land ? 1.35 : 1.15, sc = Math.max(D.W / im.naturalWidth, (D.H * z) / im.naturalHeight), h = im.naturalHeight * sc, w = im.naturalWidth * sc; this.bgg = { top: D.H - h, h, w, x: (D.W - w) / 2 }; this.yR = this.bgg.top + 0.665 * h; this.rs = (D.H - this.yR) / rd.naturalHeight; const sx = this.rs; this.lanesY = [92, 241, 410].map((c) => this.yR + c * sx); this.lhs = [140, 159, 179].map((b) => b * sx); this.lh = (this.lhs[0] + this.lhs[1] + this.lhs[2]) / 3; this.u = fitU("car", Math.max(D.W * 0.18, Math.min(D.W * 0.28, this.lhs[2] * 1.3)), this.lhs[2] * 0.7); this.sx = Math.min(1.15, 1 - this.bwOf(2) / 2 / D.W - 0.02); return true; }
+  bwOf(l: number) { return Math.max(this.lhs[l] * 0.92, Math.min(this.lhs[l] * 1.5, D.W * 0.3)); }
   lsc(l: number) { return [0.78, 0.89, 1][Math.max(0, Math.min(2, Math.round(l)))]; }
   place() {
     this.art = this.geo(); if (this.art) return;
@@ -189,7 +190,7 @@ export class LetterRoad extends Game {
     this.carL += (this.lane - this.carL) * Math.min(1, dt * 5); this.scroll += dt * D.W * 0.18;
     const carX = 0.2;
     for (const w of this.wave) {
-      w.x -= dt * 0.12;
+      w.x -= dt * 0.12; w.age = (w.age || 0) + dt;
       if (!w.hit && w.x < carX + 0.04 && w.x > carX - 0.04 && Math.round(this.carL) === w.lane) {
         w.hit = true;
         if (w.l === this.w[this.got]) { this.got++; sfx.ding(); burst(carX * D.W, this.lanesY[w.lane], 8); say(w.l === "B" ? "31" : "x_letter_one", w.l === "B" ? undefined : { L: w.l }); w.x = -1; if (this.got >= this.w.length) { this.win(D.W / 2, D.H * 0.2, "32", undefined, 3.2); return; } }
@@ -207,7 +208,7 @@ export class LetterRoad extends Game {
     for (let i = 0; i < this.w.length; i++) { lTile(wx0 + i * bs * 1.1, by - bs / 2, bs, bs, i < this.got ? C.yellow : C.cream, u); if (i < this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, C.k, "center", false); else if (i === this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, "#d8d0c4", "center", false); }
     const base = (l: number) => { const a = Math.max(0, Math.min(2, Math.floor(l))), b = Math.min(2, a + 1), f = l - a, y = (i: number) => this.lanesY[i] + this.lhs[i] * 0.3; return y(a) + (y(b) - y(a)) * f; };
     const bd = pic("letter-sign-board");
-    for (const w of this.wave) if (w.x > -0.1 && !w.hit) { const x = w.x * D.W, bsl = this.lanesY[w.lane] + this.lhs[w.lane] * 0.3, s = this.lhs[w.lane] * 0.66 * 1.4; if (!bd) continue; const bh = s * bd.naturalHeight / bd.naturalWidth, top = bsl - bh; shadow(x, bsl, s * 0.7); g.drawImage(bd, x - s / 2, top, s, bh); if (w.l === this.w[this.got]) { g.save(); g.globalAlpha = 0.65; g.fillStyle = C.yellow; g.fillRect(x - s * 0.43, top + bh * 0.07, s * 0.86, bh * 0.58); g.restore(); } txt(w.l, x, top + bh * 0.36, bh * 0.42, C.k, "center", false); }
+    for (const w of this.wave) if (w.x > -0.1 && !w.hit) { const x = w.x * D.W, bsl = this.lanesY[w.lane] + this.lhs[w.lane] * 0.3, s = this.bwOf(w.lane); if (!bd) continue; g.save(); g.globalAlpha = Math.min(1, (w.age || 0) * 4); const bh = s * bd.naturalHeight / bd.naturalWidth, top = bsl - bh; shadow(x, bsl, s * 0.7); g.drawImage(bd, x - s / 2, top, s, bh); if (w.l === this.w[this.got]) { g.save(); g.globalAlpha = 0.65; g.fillStyle = C.yellow; g.fillRect(x - s * 0.43, top + bh * 0.07, s * 0.86, bh * 0.58); g.restore(); } txt(w.l, x, top + bh * 0.36, bh * 0.42, C.k, "center", false); g.restore(); }
     const cb = base(this.carL), cu = this.u * (0.78 + 0.22 * (this.carL / 2)); shadow(0.2 * D.W, cb, cu * 17); veh("car", 0.2 * D.W, cb, cu, C.red);
   }
   paint() {
