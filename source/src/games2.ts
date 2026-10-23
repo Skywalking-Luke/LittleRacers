@@ -3,6 +3,7 @@ import * as SC from "./scenes";
 import { veh, VW, backdrop, road, place, btnBox, shape, garage, cover, coverY, pic, prop, propFit, grass, shadow, roadBand, tarmac, fitPic, tmul } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
+import { vs, kindOf } from "./vsfx";
 import { fitU } from "./games1";
 const VCOL = [C.red, C.yellow, C.blue, C.green, C.lav, C.orange];
 
@@ -264,7 +265,7 @@ export class Race extends Game {
     const v = this.drag; if (!v) return;
     if (v.rank === this.filled) {
       const onLane = this.art ? v.y + (VW[v.k][1] * v.u) / 2 > this.lanesTop + this.ln[0].h * 0.5 : v.y < D.H * 0.66;
-      if (onLane || this.slots.some((s) => hit({ x: v.x, y: v.y }, rectOf(s)))) { v.slot = this.filled; const s = this.slots[this.filled++]; v.hx = s.x; if (this.art) { v.u = this.laneU(v, v.slot); v.hy = this.laneHy(v, v.slot); } else v.hy = s.y; sfx.pop(); say(["x_praise1", "x_praise3", "34"][this.filled - 1]); if (this.filled === 3) setTimeout(() => { this.racing = 0.01; say("35"); sfx.vroom(); }, 2000); }
+      if (onLane || this.slots.some((s) => hit({ x: v.x, y: v.y }, rectOf(s)))) { v.slot = this.filled; const s = this.slots[this.filled++]; v.hx = s.x; if (this.art) { v.u = this.laneU(v, v.slot); v.hy = this.laneHy(v, v.slot); } else v.hy = s.y; sfx.pop(); say(["x_praise1", "x_praise3", "34"][this.filled - 1]); if (this.filled === 3) setTimeout(() => { this.racing = 0.01; say("35"); vs.start("car"); vs.engine(this.vs[0] ? this.vs[0].k : "car", 7); }, 2000); }
     }
     else this.oops(v, "x_race_hint");
   }
@@ -306,8 +307,8 @@ export class Helper extends Game {
   press(p: Pt) {
     if (this.sent) return;
     for (const o of this.opts) if (hit(p, rectOf(o))) {
-      if (o.k === this.need) { this.sent = o; sfx.siren(); say("x_help_yes", { v: word("v_" + o.k) }); setTimeout(() => this.win(D.W / 2, D.H * 0.35, this.round === this.rounds - 1 ? "39" : "x_safe"), 2200); }
-      else { this.oops(o); say("v_" + o.k); setTimeout(() => this.prompt(), 1100); }
+      if (o.k === this.need) { this.sent = o; if (!vs.honk(o.k)) sfx.siren(); say("x_help_yes", { v: word("v_" + o.k) }); setTimeout(() => this.win(D.W / 2, D.H * 0.35, this.round === this.rounds - 1 ? "39" : "x_safe"), 2200); }
+      else { this.oops(o); vs.honk(o.k, 0.7); say("v_" + o.k); setTimeout(() => this.prompt(), 1100); }
       return;
     }
   }
@@ -405,7 +406,7 @@ export class Kampung extends Game {
   press(q: Pt) {
     if (this.showing) return; const p = { ...q, x: q.x + this.cam };
     for (const pl of this.places) if (hit(p, rectOf(pl))) {
-      if (pl.k === this.route[this.step]) { pl.done = true; pl.bob = 1; this.car.tx = pl.x - pl.w * 0.45; this.car.ty = pl.y + pl.h * 0.45; sfx.ding(); this.step++;
+      if (pl.k === this.route[this.step]) { pl.done = true; pl.bob = 1; this.car.tx = pl.x - pl.w * 0.45; this.car.ty = pl.y + pl.h * 0.45; sfx.ding(); vs.away("car"); setTimeout(() => vs.honk("car", 0.7), 900); this.step++;
         if (this.step >= this.route.length) this.win(pl.x, pl.y - pl.h / 2, "43", undefined, 3.4); else say("x_kp_next"); }
       else if (!pl.done) { this.oops(pl); const nx = this.places.find((q) => q.k === this.route[this.step]); if (nx) nx.bob = 1; say(this.step === 0 ? "41" : "x_kp_then", this.step === 0 ? undefined : { p: word("p_" + this.route[this.step]) }); }
       return;

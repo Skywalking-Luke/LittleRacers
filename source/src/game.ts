@@ -1,6 +1,7 @@
 import { g, D, C, R, MIN, hit, Rect, Scene, Pt, go, burst, sfx, say, box, star, txt } from "./core";
 import { btnBox, homeIcon, speakerIcon, fitPic, pic } from "./art";
 import { S } from "./audio";
+import { vs, kindOf } from "./vsfx";
 let homeFn: () => Scene = null as any;
 export function setHome(f: () => Scene) { homeFn = f; }
 export function goHome() { go(homeFn()); }
@@ -29,6 +30,7 @@ export abstract class Game implements Scene {
   press(p: Pt) {} drag2(p: Pt) {} release(p: Pt) {}
   /** round complete: gentle sparkle + happy line, then next round */
   win(x: number, y: number, line?: string, vars?: any, delay = 2.6) {
+    vs.stopEngine(0.6);
     if (this.wait > 0) return; sfx.cheer(); burst(x, y);
     say(line || praise(), vars); this.wait = delay;
   }
@@ -53,7 +55,7 @@ export abstract class Game implements Scene {
   }
   move(p: Pt) { if (this.drag) { this.drag.x = p.x - this.offX; this.drag.y = p.y - this.offY; } this.drag2(p); }
   up(p: Pt) { this.release(p); this.drag = null; }
-  grab(it: Item, p: Pt) { this.drag = it; this.offX = p.x - it.x; this.offY = p.y - it.y; sfx.pop(); }
+  grab(it: Item, p: Pt) { this.drag = it; this.offX = p.x - it.x; this.offY = p.y - it.y; sfx.pop(); const k = kindOf(String((it as any).k || "")) ? String((it as any).k) : ["shape", "maze", "colour"].includes(this.id) ? "car" : ""; if (k) vs.honk(k, 0.7); }
 }
 export function drizzle() { return; /* specks removed (Luke) */ }
 function _oldDrizzle() { g.fillStyle = "rgba(255,255,255,.55)"; const u = D.U; for (let i = 0; i < 40; i++) { const x = (i * 97.3 + D.t * 30) % D.W, y = (i * 53.1 + D.t * 140 + i * i) % D.H; g.fillRect(x, y, u / 2 + 1, u * 2); } }
@@ -68,7 +70,7 @@ class Done implements Scene {
     R(0, 0, D.W, D.H, C.bg); const s = Math.min(D.W, D.H);
     const b = Math.sin(Math.min(1, this.t * 1.5) * Math.PI) * D.U * 4;
     { const tr = this.game.id === "race" ? pic("trophy") : null; if (tr) { const k = Math.min(1, this.t * 1.2), e = 1 - Math.pow(1 - k, 3), h = s * 0.34 * (0.85 + 0.15 * e), w = h * tr.naturalWidth / tr.naturalHeight; g.save(); g.globalAlpha = e; g.drawImage(tr, D.W / 2 - w / 2, D.H * 0.33 - h * 0.6 - b * 0.5, w, h); g.restore(); } else star(D.W / 2, D.H * 0.33 - b, s * 0.16, C.yellow); }
-    star(D.W / 2 - s * 0.26, D.H * 0.38, s * 0.08, C.pink); star(D.W / 2 + s * 0.26, D.H * 0.38, s * 0.08, C.lav);
+    for (const sx of [-0.26, 0.26]) { const r = s * 0.08 * (1 + 0.06 * Math.sin(this.t * 2 + sx * 9)); if (!fitPic("star", D.W / 2 + sx * s - r * 1.15, D.H * 0.38 - r * 1.15, r * 2.3, r * 2.3)) star(D.W / 2 + sx * s, D.H * 0.38, r, sx < 0 ? C.pink : C.lav); }
     const a = this.again, h = this.home;
     iconBtn(a, C.green, () => { // replay arrow
       if (fitPic("icon-replay", a.x + a.w * 0.12, a.y + a.h * 0.12, a.w * 0.76, a.h * 0.76)) return;

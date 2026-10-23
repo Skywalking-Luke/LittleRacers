@@ -3,6 +3,7 @@ import { ART, veh, cloud, place, palm, btnBox, homeIcon, cover, pic } from "./ar
 import { moon, tree } from "./scenes";
 import { goHome } from "./game";
 import { say, stopVoice, bell, soft, S } from "./audio";
+import { vs } from "./vsfx";
 // Goodnight, Little Jeep / Selamat Malam, Jip Kecil (bedtime-story.md)
 const N = { navy: "#2E3A59", lilac: "#8C86B0", lamp: "#F2D894", cream: "#FAF6EE", night2: "#232C46", field: "#3E4D63" };
 const LULLABY = [392, 330, 349, 392, 440, 392, 349, 330, 294, 330, 349, 330, 294, 262, 294, 330, 392, 330, 349, 392, 440, 392, 349, 330, 294, 330, 349, 294, 262, 262, 262, 262];
@@ -12,7 +13,8 @@ export class Bedtime implements Scene {
   layout() { const s = Math.max(MIN, Math.min(D.W, D.H) * 0.11); this.homeB = { x: D.U * 3, y: D.U * 3, w: s, h: s }; this.parB = { x: D.W - s - D.U * 3, y: D.U * 3, w: s, h: s }; const r = Math.max(MIN * 1.4, Math.min(D.W, D.H) * 0.22); this.replay = { x: D.W / 2 - r / 2, y: D.H / 2 - r / 2, w: r, h: r }; }
   leave() { ART.sleepy = false; ART.bed = false; this.tok++; if (this.mus) clearInterval(this.mus); this.mus = null; stopVoice(); }
   begin() {
-    const t = ++this.tok; this.st = 0; this.spoke = false; this.narrDone = false; this.tapFx = 0; this.lights = 2; this.stars = 0; this.sb = []; this.puffs = [];
+    const t = ++this.tok; vs.stopEngine(1); this.st = 0; this.spoke = false; this.narrDone = false; this.tapFx = 0; this.lights = 2; this.stars = 0; this.sb = []; this.puffs = [];
+    if (this.sc === 3) setTimeout(() => { if (t === this.tok && !S.mute) { vs.honk("train", 0.7); setTimeout(() => t === this.tok && vs.engine("train", 14, 0.8), 1800); } }, 3000); // the train toots softly as it rolls in, then a quiet chug
     const keys = ["bt1", "bt2", "bt3", "bt4", "bt5", "bt6", null, "bt8"];
     setTimeout(async () => {
       if (t !== this.tok) return;
@@ -90,7 +92,7 @@ export class Bedtime implements Scene {
       case 0: soft("blink"); break;
       case 1: soft("pssh"); break;
       case 2: if (this.lights > 0) { this.lights--; soft("blink"); } break;
-      case 3: soft("choo"); this.puffs.push({ x: p.x, y: p.y, t: 0 }); break;
+      case 3: if (!vs.honk("train", 0.7)) soft("choo"); this.puffs.push({ x: p.x, y: p.y, t: 0 }); break;
       case 4: soft("tuck"); break;
       case 5: if (this.stars < 5) { this.sb[this.stars] = D.t; this.stars++; bell(523 + this.stars * 60, 0.8, 0.04); say("n" + this.stars, undefined, true, 0.75); } break;
     }

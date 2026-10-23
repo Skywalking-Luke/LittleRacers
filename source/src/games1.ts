@@ -3,6 +3,7 @@ import * as SC from "./scenes";
 import { veh, VW, backdrop, road, garage, place, btnBox, shape, cover, coverY, pic, prop, shadow, propFit, roadBand, tarmac, fitPic, tmul } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
+import { vs } from "./vsfx";
 export const fitU = (k: string, w: number, h: number) => Math.max(2, Math.floor(Math.min(w / VW[k][0], h / VW[k][1])));
 const VCOL = [C.red, C.yellow, C.blue, C.green, C.lav, C.orange];
 
@@ -32,10 +33,11 @@ export class Beep extends Game {
   press(p: Pt) {
     for (const it of this.items) if (hit(p, rectOf(it))) {
       it.wig = 0.5; it.bob = 1;
-      if (it.k === "car") { sfx.honk(); it.glow = 1.2; say("02"); }
-      if (it.k === "bus") { sfx.vroom(); say("03"); }
-      if (it.k === "moto") { sfx.ngeeng(); it.dx = 0.001; say("04"); }
-      if (it.k === "fire") { sfx.siren(); it.glow = 1.5; say("05"); }
+      if (it.k === "car") { if (!vs.honk("car")) sfx.honk(); it.glow = 1.2; say("02"); }
+      if (it.k === "bus") { if (!vs.honk("bus")) sfx.vroom(); say("03"); }
+      if (it.k === "moto") { if (!vs.honk("moto")) sfx.ngeeng(); it.dx = 0.001; say("04"); }
+      if (it.k === "fire") { if (!vs.honk("fire")) sfx.siren(); it.glow = 1.5; say("05"); }
+      if (!["car", "bus", "moto", "fire"].includes(it.k)) vs.honk(it.k);
       if (!it.done) { it.done = true; bubbles(it.x, it.y - it.h * 0.3, 4, C.yellow); }
       if (this.items.every((i) => i.done)) setTimeout(() => this.wait <= 0 && this.win(D.W / 2, D.H / 2), 1500);
       return;
@@ -79,7 +81,7 @@ export class Wash extends Game {
     if (this.phase === 0) { this.bp = { x: p.x, y: p.y }; this.bt = D.t; this.rub(p); return; }
     const r = this.carRect();
     if (this.phase === 1 && hit(p, this.soap)) { sfx.pop(); this.foam = Math.min(1, this.foam + 0.34); for (let i = 0; i < 6; i++) bubbles(rnd(r.x, r.x + r.w), rnd(r.y, r.y + r.h), 1); if (this.foam >= 1) { this.phase = 2; setTimeout(() => this.prompt(), 500); } }
-    else if (this.phase === 2 && hit(p, this.hose)) { sfx.splash(); this.foam = Math.max(0, this.foam - 0.34); for (let i = 0; i < 8; i++) bubbles(rnd(r.x, r.x + r.w), r.y, 1, C.blue); if (this.foam <= 0.01) { this.phase = 3; this.prompt(); burst(this.cx, r.y, 10); setTimeout(() => { this.drive = 0.01; sfx.vroom(); }, 1600); } }
+    else if (this.phase === 2 && hit(p, this.hose)) { sfx.splash(); this.foam = Math.max(0, this.foam - 0.34); for (let i = 0; i < 8; i++) bubbles(rnd(r.x, r.x + r.w), r.y, 1, C.blue); if (this.foam <= 0.01) { this.phase = 3; this.prompt(); burst(this.cx, r.y, 10); setTimeout(() => { this.drive = 0.01; vs.start("car"); vs.engine("car", 6); }, 1600); } }
     else if (this.phase === 1 || this.phase === 2) { const t = this.phase === 1 ? this.soap : this.hose; this.taps++; if (this.taps % 3 === 0) this.prompt(); }
   }
   bp: { x: number; y: number } | null = null; bt = -9;
@@ -127,7 +129,7 @@ export class Peek extends Game {
     for (const it of this.items) if (hit(p, rectOf(it))) {
       if (!it.opening) { it.opening = true; sfx.pop(); it.bob = 1; const l = it.k === "lorry" ? "11" : it.k === "taxi" ? "12" : "x_peek"; say(l, l === "x_peek" ? { v: word("v_" + it.k) } : undefined); bubbles(it.x, it.y, 4, C.yellow);
         if (this.items.every((i) => i.opening)) setTimeout(() => this.win(D.W / 2, D.H / 2), 2200); }
-      else { it.wig = 0.4; sfx.honk(); }
+      else { it.wig = 0.4; if (!vs.honk(it.k)) sfx.honk(); }
       return;
     }
   }
@@ -192,12 +194,12 @@ export class Light extends Game {
   start() { this.carX = 0.08; this.state = 0; this.st = 0; this.warned = false; this.prompt(); }
   prompt() { say(this.state === 0 ? "16" : this.state === 1 ? "18" : "17"); }
   place() { const s = Math.max(MIN * 1.5, Math.min(D.W, D.H) * 0.24); this.pedal = { x: D.W - s - D.U * 5, y: D.H - s - D.U * 5, w: s, h: s }; this.u = fitU("car", D.W * 0.2, D.H * 0.14); }
-  press(p: Pt) { if (hit(p, this.pedal, D.U * 3)) { this.hold = true; sfx.tap(); if (this.state === 2 && !this.warned) { this.warned = true; say("17"); } } }
-  release() { this.hold = false; }
+  press(p: Pt) { if (hit(p, this.pedal, D.U * 3)) { this.hold = true; sfx.tap(); if (this.state !== 2) { vs.start("car"); vs.engine("car", 30); } if (this.state === 2 && !this.warned) { this.warned = true; say("17"); } } }
+  release() { this.hold = false; vs.stopEngine(0.5); }
   tick(dt: number) {
     if (this.wait > 0) return;
     this.st += dt; const dur = [5, 2, 3.5][this.state];
-    if (this.st > dur) { this.st = 0; this.state = (this.state + 1) % 3; this.warned = false; sfx.beep(); this.prompt(); }
+    if (this.st > dur) { this.st = 0; this.state = (this.state + 1) % 3; this.warned = false; sfx.beep(); if (this.state === 2) vs.stopEngine(0.4); this.prompt(); }
     const sp = this.state === 0 ? 0.07 : this.state === 1 ? 0.03 : 0;
     if (this.hold) this.carX += sp * dt;
     if (this.carX >= 0.86) this.win(D.W * 0.86, D.H * 0.5, "19");
@@ -243,7 +245,7 @@ export class Build extends Game {
     this.goBtn = { x: p.hx - s / 2, y: p.hy - s / 2, w: s, h: s };
   }
   press(p: Pt) {
-    if (this.stage === 3) { if (hit(p, this.goBtn) && !this.drive) { this.drive = 0.01; sfx.vroom(); } return; }
+    if (this.stage === 3) { if (hit(p, this.goBtn) && !this.drive) { this.drive = 0.01; vs.start("car"); vs.engine("car", 6); } return; }
     if (hit(p, rectOf(this.piece), D.U * 3)) this.grab(this.piece, p);
   }
   release() {

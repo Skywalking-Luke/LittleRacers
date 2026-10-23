@@ -1,4 +1,5 @@
 import { sfx, say, unlock, stopVoice, cue } from "./audio";
+import { vs } from "./vsfx";
 export const cv = document.getElementById("c") as HTMLCanvasElement;
 export const g = cv.getContext("2d")!;
 export const D = { W: 0, H: 0, U: 4, t: 0, dpr: 1 };
@@ -116,7 +117,7 @@ export interface Scene {
 }
 export type Pt = { x: number; y: number; id: number };
 export let scene: Scene;
-export function go(s: Scene) { if (scene && scene.leave) scene.leave(); stopVoice(); scene = s; if (s.enter) s.enter(); if (s.layout) s.layout(); }
+export function go(s: Scene) { if (scene && scene.leave) scene.leave(); stopVoice(); vs.stopAll(); scene = s; if (s.enter) s.enter(); if (s.layout) s.layout(); }
 
 export function resize() {
   D.dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -136,7 +137,7 @@ cv.addEventListener("pointerdown", (e) => {
   scene.down && scene.down(pt(e));
 });
 cv.addEventListener("pointermove", (e) => { if (e.pointerId === active) { e.preventDefault(); scene.move && scene.move(pt(e)); } });
-const end = (e: PointerEvent) => { if (e.pointerId === active) { active = -1; scene.up && scene.up(pt(e)); } };
+const end = (e: PointerEvent) => { unlock(); if (e.pointerId === active) { active = -1; scene.up && scene.up(pt(e)); } };
 cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 document.addEventListener("gesturestart", (e) => e.preventDefault());

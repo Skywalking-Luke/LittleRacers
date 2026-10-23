@@ -46,3 +46,10 @@ if os.path.exists("art/maze-road-straight.png"):
   t=Image.open("art/maze-road-straight.png").convert("RGB").crop((0,0,512,128)); gt=Image.new("RGB",(512,256)); gt.paste(t,(0,0)); gt.paste(t.transpose(Image.FLIP_TOP_BOTTOM),(0,128))
   gt.save("public/art/maze-grass.webp","WEBP",quality=82,method=6); lst["maze-grass"]=[512,256]
 json.dump(lst,open("src/artlist.json","w"))
+
+# vehicle sounds (Sylphy's own, synthesised): audio/*.mp3|ogg -> public/sfx + manifest
+import shutil
+os.makedirs("public/sfx",exist_ok=True); man={}
+for f in sorted(glob.glob("audio/*.mp3")+glob.glob("audio/*.ogg")):
+  b=os.path.basename(f); shutil.copyfile(f,"public/sfx/"+b); man.setdefault(os.path.splitext(b)[0],{"files":[],"vol":1})["files"].append(b)
+json.dump(man,open("public/sfx/manifest.json","w"),indent=0)

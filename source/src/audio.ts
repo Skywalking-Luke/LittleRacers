@@ -7,12 +7,17 @@ export const S = {
   rain: localStorage.getItem("lrRain") === "1",
 };
 export function setLang(l: Lang) { S.lang = l; localStorage.setItem("lrLang", l); }
-export function setMute(m: boolean) { S.mute = m; localStorage.setItem("lrMute", m ? "1" : "0"); if (m) stopVoice(); }
+export const onUnlock: (() => void)[] = [], onMute: (() => void)[] = [];
+export function setMute(m: boolean) { S.mute = m; localStorage.setItem("lrMute", m ? "1" : "0"); if (m) { stopVoice(); onMute.forEach((f) => f()); } }
 
 let ac: AudioContext | null = null;
+export const ctx = () => ac;
+let primed = false;
 export function unlock() {
   if (!ac) { try { ac = new (window.AudioContext || (window as any).webkitAudioContext)(); } catch (e) { ac = null; } }
   if (ac && ac.state === "suspended") ac.resume();
+  if (ac && !primed) { primed = true; try { const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); } catch (e) {} } // iOS: a silent blip inside the first tap wakes the audio output
+  if (ac) onUnlock.forEach((f) => f());
 }
 function tone(f: number, d: number, type: OscillatorType = "square", vol = 0.08, at = 0, slide = 0) {
   if (S.mute || !ac) return;

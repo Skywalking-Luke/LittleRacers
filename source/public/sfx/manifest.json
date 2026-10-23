@@ -1,0 +1,156 @@
+{
+"engine-bus-idle": {
+"files": [
+"engine-bus-idle.mp3",
+"engine-bus-idle.ogg"
+],
+"vol": 1
+},
+"engine-car-idle": {
+"files": [
+"engine-car-idle.mp3",
+"engine-car-idle.ogg"
+],
+"vol": 1
+},
+"engine-lorry-idle": {
+"files": [
+"engine-lorry-idle.mp3",
+"engine-lorry-idle.ogg"
+],
+"vol": 1
+},
+"engine-motorcycle-idle": {
+"files": [
+"engine-motorcycle-idle.mp3",
+"engine-motorcycle-idle.ogg"
+],
+"vol": 1
+},
+"engine-train-chug": {
+"files": [
+"engine-train-chug.mp3",
+"engine-train-chug.ogg"
+],
+"vol": 1
+},
+"engine-van-idle": {
+"files": [
+"engine-van-idle.mp3",
+"engine-van-idle.ogg"
+],
+"vol": 1
+},
+"honk-bus": {
+"files": [
+"honk-bus.mp3",
+"honk-bus.ogg"
+],
+"vol": 1
+},
+"honk-car": {
+"files": [
+"honk-car.mp3",
+"honk-car.ogg"
+],
+"vol": 1
+},
+"honk-lorry": {
+"files": [
+"honk-lorry.mp3",
+"honk-lorry.ogg"
+],
+"vol": 1
+},
+"honk-motorcycle": {
+"files": [
+"honk-motorcycle.mp3",
+"honk-motorcycle.ogg"
+],
+"vol": 1
+},
+"honk-taxi": {
+"files": [
+"honk-taxi.mp3",
+"honk-taxi.ogg"
+],
+"vol": 1
+},
+"honk-tow": {
+"files": [
+"honk-tow.mp3",
+"honk-tow.ogg"
+],
+"vol": 1
+},
+"honk-van": {
+"files": [
+"honk-van.mp3",
+"honk-van.ogg"
+],
+"vol": 1
+},
+"horn-ambulance": {
+"files": [
+"horn-ambulance.mp3",
+"horn-ambulance.ogg"
+],
+"vol": 1
+},
+"horn-firetruck": {
+"files": [
+"horn-firetruck.mp3",
+"horn-firetruck.ogg"
+],
+"vol": 1
+},
+"horn-train": {
+"files": [
+"horn-train.mp3",
+"horn-train.ogg"
+],
+"vol": 1
+},
+"start-car": {
+"files": [
+"start-car.mp3",
+"start-car.ogg"
+],
+"vol": 1
+},
+"start-lorry": {
+"files": [
+"start-lorry.mp3",
+"start-lorry.ogg"
+],
+"vol": 1
+},
+"start-motorcycle": {
+"files": [
+"start-motorcycle.mp3",
+"start-motorcycle.ogg"
+],
+"vol": 1
+},
+"vroom-car": {
+"files": [
+"vroom-car.mp3",
+"vroom-car.ogg"
+],
+"vol": 1
+},
+"vroom-lorry": {
+"files": [
+"vroom-lorry.mp3",
+"vroom-lorry.ogg"
+],
+"vol": 1
+},
+"vroom-motorcycle": {
+"files": [
+"vroom-motorcycle.mp3",
+"vroom-motorcycle.ogg"
+],
+"vol": 1
+}
+}
