@@ -147,7 +147,7 @@ export function veh(kind: string, cx: number, gy: number, u: number, col: string
     case "moto": W(3, 9, 1.9); W(11, 9, 1.9); B(3.5, 5, 8.5, 3, col, 1.4); skLine([[X(10.5), Y(5)], [X(11.4), Y(2.8)], [X(10.4), Y(2.4)]], lw * 1.2);
       B(5.4, 2.4, 3.2, 3.6, C.blue, 1.3); sk(elPts(X(7), Y(1.3), 1.7 * u, 1.5 * u, 12), col, lw); B(7, 0.8, 2.2, 1.2, C.win, 0.5); eye(X(8.1), Y(1.4), u * 0.5, ph); lamp(12.3, 5.6); break;
     case "build": {
-      if (IMG.car_body && IMG.car_roof && IMG.car_w2) {
+      if (IMG.car_body && IMG.car_roof && IMG.car_w0 && IMG.car_w1 && IMG.car_w2) {
         const dw = w * u, dh = h * u, n = o.wheels || 0, L = (k: string) => g.drawImage(tinted(k, col), x0, y0, dw, dh);
         if (n > 2) L("car_w2"); if (o.body) L("car_body"); if (n > 0) L("car_w0"); if (n > 1) L("car_w1"); if (n > 3) { g.save(); g.globalAlpha *= 0.9; L("car_w2"); g.restore(); }
         if (o.roof) L("car_roof"); break;

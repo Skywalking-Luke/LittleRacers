@@ -37,9 +37,9 @@ for f in sorted(glob.glob("art/*.png")+glob.glob("art/*.jpg")):
   n=os.path.splitext(os.path.basename(f))[0]
   if n in SKIP or "preview" in n.lower(): continue
   im=Image.open(f).convert("RGBA"); bg=n.startswith("bg-") or f.endswith(".jpg") or n in ("bedtime-bg",)
-  if not bg and im.getchannel("A").getbbox(): im=im.crop(im.getchannel("A").getbbox())
+  if not bg and n not in ("shape-tunnel-sign",) and im.getchannel("A").getbbox(): im=im.crop(im.getchannel("A").getbbox())
   if n.startswith(("bedtime-","sleepy-")) and not bg and n not in RIGHT: im=im.transpose(Image.FLIP_LEFT_RIGHT)
-  mx=1920 if bg else 700; s=min(1,mx/max(im.size)); im=im.resize((round(im.width*s),round(im.height*s)),Image.LANCZOS)
+  mx=1920 if bg else {"letter-road":2400,"letter-lane-marking":1200}.get(n,700); s=min(1,mx/max(im.size)); im=im.resize((round(im.width*s),round(im.height*s)),Image.LANCZOS)
   (im.convert("RGB") if bg else im).save(f"public/art/{n}.webp","WEBP",quality=80,method=6); lst[n]=[im.width,im.height]
 # derived: seamless grass swatch (top 128 rows of the straight maze tile, mirrored vertically) for the maze ground
 if os.path.exists("art/maze-road-straight.png"):

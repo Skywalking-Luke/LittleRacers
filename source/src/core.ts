@@ -148,7 +148,7 @@ export function loop(now: number) {
   if (scene.update) scene.update(dt);
   stepParts(dt);
   g.setTransform(D.dpr, 0, 0, D.dpr, 0, 0);
-  scene.draw(); drawParts(); drawCue(now);
+  try { scene.draw(); drawParts(); drawCue(now); } catch (e) { console.error(e); } // one bad frame (e.g. an image still loading) must never freeze the canvas
   requestAnimationFrame(loop);
 }
 export function fullscreen() {

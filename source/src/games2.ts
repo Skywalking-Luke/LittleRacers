@@ -159,7 +159,7 @@ export class ShapeGarage extends Game {
     const hill = pic("shape-hill");
     if (hill) { const t0 = this.tun[0], gb = t0 ? t0.y + t0.h / 2 : D.H * 0.5; backdrop("plain", Math.min(0.62, Math.max(0.3, (gb - D.U * 4) / D.H))); }
     else { const gy = backdrop("plain", 0.45); const t0 = this.tun[0]; SC.hillside(D.W / 2, t0 ? t0.y - t0.h * 0.75 : gy * 0.5, Math.max(gy, t0 ? t0.y + t0.h / 2 : gy), D.U); } const u = D.U;
-    for (const t of this.tun) { const x = t.x - t.w / 2, y = t.y - t.h / 2; if (hill) { const hw = t.w * 1.18, hh = hw * hill.naturalHeight / hill.naturalWidth, gb = t.y + t.h / 2; shadow(t.x, gb, hw * 0.8); g.drawImage(hill, t.x - hw / 2, gb - hh + u, hw, hh); const sy = gb - hh * 0.72; box(t.x - hh * 0.12, sy - hh * 0.12, hh * 0.24, hh * 0.24, t.col, u); shape(t.s, t.x, sy, hh * 0.09, C.white, u); continue; } box(x, y, t.w, t.h, t.col, u); R(x + t.w * 0.15, y + t.h * 0.45, t.w * 0.7, t.h * 0.55 - u, "#5e5a6e"); shape(t.s, t.x, y + t.h * 0.24, t.h * 0.15, C.white, u); }
+    for (const t of this.tun) { const x = t.x - t.w / 2, y = t.y - t.h / 2; if (hill) { const hw = t.w * 1.18, hh = hw * hill.naturalHeight / hill.naturalWidth, gb = t.y + t.h / 2; shadow(t.x, gb, hw * 0.8); g.drawImage(hill, t.x - hw / 2, gb - hh + u, hw, hh); const sg = pic("shape-tunnel-sign"); if (sg) { const sz = Math.min(t.w * 0.55, hh * 0.7), sb = gb + sz * 1.0 + u * 2; shadow(t.x, sb, sz * 0.5); g.drawImage(sg, t.x - sz / 2, sb - sz, sz, sz); shape(t.s, t.x, sb - sz * 0.675, sz * 0.17, t.col, u); } else { const sy = gb - hh * 0.72; box(t.x - hh * 0.12, sy - hh * 0.12, hh * 0.24, hh * 0.24, t.col, u); shape(t.s, t.x, sy, hh * 0.09, C.white, u); } continue; } box(x, y, t.w, t.h, t.col, u); R(x + t.w * 0.15, y + t.h * 0.45, t.w * 0.7, t.h * 0.55 - u, "#5e5a6e"); shape(t.s, t.x, y + t.h * 0.24, t.h * 0.15, C.white, u); }
     const c = this.car; if (this.inT >= 1) return;
     g.save(); if (this.inT) g.globalAlpha = 1 - this.inT;
     const gy = c.y + c.h * 0.35; veh("car", c.x + wx(c), gy, c.u, c.col);
@@ -173,12 +173,16 @@ const WORDS = { en: [["CAR", "car"], ["BUS", "bus"], ["VAN", "van"]], bm: [["BAS
 /** painted wooden letter tile (warm glow when it is the one to find / found), else the code box */
 function lTile(x: number, y: number, w: number, h: number, col: string, u: number) { const im = pic("letter-tile"); if (!im) { box(x, y, w, h, col, u); return; } if (col === C.yellow) { const gl = g.createRadialGradient(x + w / 2, y + h / 2, 0, x + w / 2, y + h / 2, w * 0.8); gl.addColorStop(0, "rgba(255,226,140,.8)"); gl.addColorStop(1, "rgba(255,226,140,0)"); g.fillStyle = gl; g.fillRect(x - w * 0.3, y - h * 0.3, w * 1.6, h * 1.6); } g.drawImage(im, x, y, w, h); }
 export class LetterRoad extends Game {
-  id = "letter"; rounds = 3; w = "CAR"; vk = "car"; got = 0; lane = 1; carL = 1; wave: { l: string; lane: number; x: number; hit?: boolean }[] = []; u = 4; scroll = 0; lanesY: number[] = []; lh = 0;
+  id = "letter"; rounds = 3; w = "CAR"; vk = "car"; got = 0; lane = 1; carL = 1; wave: { l: string; lane: number; x: number; hit?: boolean }[] = []; u = 4; scroll = 0; lanesY: number[] = []; lh = 0; art = false; yR = 0; rs = 1; lhs: number[] = [0, 0, 0]; bgg = { top: 0, h: 0, w: 0, x: 0 };
   start() { const W = WORDS[S.lang][this.round]; this.w = W[0]; this.vk = W[1]; this.got = 0; this.lane = this.carL = 1; this.newWave(); this.prompt(); }
   prompt() { const spelled = this.w.split("").join(", "); if ((S.lang === "en" && this.w === "CAR") || (S.lang === "bm" && this.w === "BAS")) say("30"); else say("x_letter_ask", { w: spelled, W: word("v_" + this.vk) }); }
   newWave() { const right = ri(0, 2), want = this.w[this.got]; const pool = "ABCDEFGKLMNOPRSTUV".split("").filter((c) => c !== want); this.wave = [0, 1, 2].map((l) => ({ l: l === right ? want : pool[ri(0, pool.length - 1)], lane: l, x: 1.15 })); if (Math.random() < 0.4) this.wave.splice(this.wave.findIndex((w) => w.lane !== right), 1); }
-  place() { const top = this.back.y + this.back.h + D.H * 0.14, bot = D.H - D.U * 4; this.lh = (bot - top) / 3; this.lanesY = [0, 1, 2].map((i) => top + this.lh * (i + 0.5)); this.u = fitU("car", D.W * 0.18, this.lh * 0.7); }
-  press(p: Pt) { for (let i = 0; i < 3; i++) if (Math.abs(p.y - this.lanesY[i]) < this.lh / 2) { this.lane = i; sfx.tap(); } }
+  geo() { const im = pic("bg-padi-letter"), rd = pic("letter-road"); if (!im || !rd) return false; const land = D.W > D.H, z = land ? 1.35 : 1.15, sc = Math.max(D.W / im.naturalWidth, (D.H * z) / im.naturalHeight), h = im.naturalHeight * sc, w = im.naturalWidth * sc; this.bgg = { top: D.H - h, h, w, x: (D.W - w) / 2 }; this.yR = this.bgg.top + 0.665 * h; this.rs = (D.H - this.yR) / rd.naturalHeight; const sx = this.rs; this.lanesY = [92, 241, 410].map((c) => this.yR + c * sx); this.lhs = [140, 159, 179].map((b) => b * sx); this.lh = (this.lhs[0] + this.lhs[1] + this.lhs[2]) / 3; this.u = fitU("car", Math.max(D.W * 0.18, Math.min(D.W * 0.28, this.lhs[2] * 1.3)), this.lhs[2] * 0.7); return true; }
+  lsc(l: number) { return [0.78, 0.89, 1][Math.max(0, Math.min(2, Math.round(l)))]; }
+  place() {
+    this.art = this.geo(); if (this.art) return;
+    const top = this.back.y + this.back.h + D.H * 0.14, bot = D.H - D.U * 4; this.lh = (bot - top) / 3; this.lanesY = [0, 1, 2].map((i) => top + this.lh * (i + 0.5)); this.u = fitU("car", D.W * 0.18, this.lh * 0.7); }
+  press(p: Pt) { if (this.art) { if (p.y < this.yR) return; const i = p.y < this.yR + this.rs * 162 ? 0 : p.y < this.yR + this.rs * 321 ? 1 : 2; if (i !== this.lane) sfx.tap(); this.lane = i; return; } for (let i = 0; i < 3; i++) if (Math.abs(p.y - this.lanesY[i]) < this.lh / 2) { this.lane = i; sfx.tap(); } }
   drag2(p: Pt) { this.press(p); }
   tick(dt: number) {
     if (this.wait > 0) return;
@@ -194,7 +198,20 @@ export class LetterRoad extends Game {
     }
     if (this.wave.every((w) => w.x < -0.1)) this.newWave();
   }
+  paintArt() {
+    const u = D.U, G = this.bgg, bg = pic("bg-padi-letter")!, rd = pic("letter-road")!;
+    R(0, 0, D.W, D.H, "#f4ead6"); g.drawImage(bg, G.x, G.top, G.w, G.h);
+    const tw = Math.ceil(rd.naturalWidth * this.rs), off = this.scroll % tw; for (let x = -off; x < D.W; x += tw - 1) g.drawImage(rd, Math.round(x), this.yR, tw, D.H - this.yR + 1);
+    const bs = Math.min(this.lhs[1] * 0.8, (D.W * 0.5) / this.w.length), by = this.back.y + this.back.h + D.H * 0.07, wx0 = D.W / 2 - ((this.w.length + 1.3) * bs * 1.1) / 2 + bs * 1.43;
+    { const cx = wx0 - bs * 1.43; lTile(cx, by - bs / 2, bs, bs, C.cream, u); veh(this.vk, cx + bs / 2, by + bs * 0.32, fitU(this.vk, bs * 0.82, bs * 0.6), C.yellow); }
+    for (let i = 0; i < this.w.length; i++) { lTile(wx0 + i * bs * 1.1, by - bs / 2, bs, bs, i < this.got ? C.yellow : C.cream, u); if (i < this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, C.k, "center", false); else if (i === this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, "#d8d0c4", "center", false); }
+    const base = (l: number) => { const a = Math.max(0, Math.min(2, Math.floor(l))), b = Math.min(2, a + 1), f = l - a, y = (i: number) => this.lanesY[i] + this.lhs[i] * 0.3; return y(a) + (y(b) - y(a)) * f; };
+    const bd = pic("letter-sign-board");
+    for (const w of this.wave) if (w.x > -0.1 && !w.hit) { const x = w.x * D.W, bsl = this.lanesY[w.lane] + this.lhs[w.lane] * 0.3, s = this.lhs[w.lane] * 0.66 * 1.4; if (!bd) continue; const bh = s * bd.naturalHeight / bd.naturalWidth, top = bsl - bh; shadow(x, bsl, s * 0.7); g.drawImage(bd, x - s / 2, top, s, bh); if (w.l === this.w[this.got]) { g.save(); g.globalAlpha = 0.65; g.fillStyle = C.yellow; g.fillRect(x - s * 0.43, top + bh * 0.07, s * 0.86, bh * 0.58); g.restore(); } txt(w.l, x, top + bh * 0.36, bh * 0.42, C.k, "center", false); }
+    const cb = base(this.carL), cu = this.u * (0.78 + 0.22 * (this.carL / 2)); shadow(0.2 * D.W, cb, cu * 17); veh("car", 0.2 * D.W, cb, cu, C.red);
+  }
   paint() {
+    if (this.art) { this.paintArt(); return; }
     const u = D.U, top = this.lanesY[0] - this.lh / 2; { const hz = Math.max(D.H * 0.12, top * 0.32); backdrop("plain", hz / D.H); if (!cover("bg-padi")) { SC.padi(hz, top, u); SC.padi(top + this.lh * 3, D.H + u, u); SC.palm(D.W * 0.04, hz + u * 2, u * 0.6); SC.palm(D.W * 0.9, hz + u * 2, u * 0.6); } }
     if (!tarmac(0, top, D.W, this.lh * 3)) R(0, top, D.W, this.lh * 3, C.road); for (let i = 1; i < 3; i++) { const y = top + this.lh * i; for (let x = -(this.scroll % (u * 20)); x < D.W; x += u * 20) R(x, y - u / 2, u * 10, u, C.white); }
     // word slots + picture
