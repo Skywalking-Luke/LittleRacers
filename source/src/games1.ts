@@ -1,6 +1,6 @@
 import { g, D, C, R, MIN, hit, Pt, sfx, say, box, bubbles, burst, shuffle, ri, COLS, star, txt, rnd } from "./core";
 import * as SC from "./scenes";
-import { veh, VW, backdrop, road, garage, place, btnBox, shape, cover, coverY, pic, prop, propFit, roadBand, tarmac, fitPic, tmul } from "./art";
+import { veh, VW, backdrop, road, garage, place, btnBox, shape, cover, coverY, pic, prop, shadow, propFit, roadBand, tarmac, fitPic, tmul } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
 export const fitU = (k: string, w: number, h: number) => Math.max(2, Math.floor(Math.min(w / VW[k][0], h / VW[k][1])));
@@ -59,10 +59,11 @@ export class Wash extends Game {
   start() { this.phase = 0; this.mud = Array(24).fill(true); this.foam = 0; this.drive = 0; this.taps = 0; this.col = VCOL[this.round % VCOL.length]; this.prompt(); }
   prompt() { say(["06", "07", "08", "09"][this.phase]); }
   place() {
-    this.u = fitU("car", D.W * 0.62, D.H * 0.4); this.cx = D.W / 2;
+    this.u = fitU("car", D.W * 0.62, D.H * (pic("wash-bay") && D.W > D.H ? 0.27 : 0.4)); this.cx = D.W / 2;
     const s = Math.max(MIN * 1.3, Math.min(D.W, D.H) * 0.2);
     // car stands on the painted ground (sand line of the dusk scene), kept clear of the soap/hose buttons
     this.gy = Math.min(coverY("bg-dusk", D.W > D.H ? 0.76 : 0.8) ?? D.H * 0.64, D.H - s - D.U * 8);
+    if (pic("wash-bay")) this.u = Math.min(this.u, (this.gy - (this.back.y + this.back.h + D.U * 2)) / 19.5);
     this.soap = { x: D.W / 2 - s - D.U * 4, y: D.H - s - D.U * 4, w: s, h: s }; this.hose = { x: D.W / 2 + D.U * 4, y: D.H - s - D.U * 4, w: s, h: s };
   }
   carRect() { const w = 18 * this.u, h = 11 * this.u; return { x: this.cx - w / 2, y: this.gy - h, w, h }; }
@@ -87,7 +88,8 @@ export class Wash extends Game {
   paint() {
     { const gy = backdrop("plain", 0.66); if (!cover("bg-dusk")) { SC.rainTree(D.W * 0.12, gy, D.U * 1.1); SC.rainTree(D.W * 0.9, gy, D.U * 0.9); } } const u = this.u, r = this.carRect();
     // wash bay
-    if (!pic("bg-dusk")) { R(r.x - 8 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x + r.w + 6 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x - 8 * u, this.gy - 19 * u, r.w + 16 * u, 2 * u, C.blue); }
+    { const wb = pic("wash-bay"); if (wb) { const hud = this.back.y + this.back.h + D.U * 2, aw = Math.min(r.w * 1.45, (this.gy - hud) / (wb.naturalHeight / wb.naturalWidth)), ah = aw * wb.naturalHeight / wb.naturalWidth; g.drawImage(wb, this.cx - aw / 2, this.gy + u * 1.2 - ah, aw, ah); } }
+    if (!pic("bg-dusk") && !pic("wash-bay")) { R(r.x - 8 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x + r.w + 6 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x - 8 * u, this.gy - 19 * u, r.w + 16 * u, 2 * u, C.blue); }
     g.save(); g.translate(this.drive, 0);
     veh("car", this.cx, this.gy, u, this.col);
     this.mud.forEach((m, i) => { if (m) { const ii = i % 6, jj = Math.floor(i / 6); const mx = r.x + ((ii + 0.5) * r.w) / 6, my = r.y + ((jj + 0.5) * r.h) / 4, k = 0.8 + ((i * 37) % 10) / 25; if (pic("mud-splat")) { const mw = (r.w / 7.5) * k; g.drawImage(pic("mud-splat")!, mx - mw / 2, my - mw * 0.4, mw, mw * 0.8); return; } g.fillStyle = (ii + jj) % 2 ? "rgba(168,133,102,.92)" : "rgba(154,122,92,.92)"; g.beginPath(); g.ellipse(mx, my, (r.w / 11) * k, (r.h / 7.5) * k, (i % 5) * 0.6, 0, 7); g.fill(); g.beginPath(); g.arc(mx + (r.w / 12) * k, my - (r.h / 10), r.w / 34, 0, 7); g.fill(); } });
@@ -96,8 +98,9 @@ export class Wash extends Game {
     g.restore();
     if (this.phase === 0) { const s = D.U * 6; R(this.cx - s * 4, this.gy + 3 * D.U, s * 2, s, C.yellow); R(this.cx - s * 4, this.gy + 3 * D.U, s * 2, D.U, C.k); }
     const pulse = (b: any) => (Math.sin(D.t * 3) > 0 ? 0 : D.U);
-    if (this.phase === 1) iconBtn(this.soap, C.pink, () => { const b = this.soap; box(b.x + b.w * 0.3, b.y + b.h * 0.3 - pulse(b), b.w * 0.4, b.h * 0.55, C.white, D.U); R(b.x + b.w * 0.42, b.y + b.h * 0.15 - pulse(b), b.w * 0.16, b.h * 0.15, C.k); for (let i = 0; i < 3; i++) R(b.x + b.w * (0.2 + i * 0.25), b.y + b.h * 0.12, D.U * 2, D.U * 2, C.white); });
-    if (this.phase === 2) iconBtn(this.hose, C.blue, () => { const b = this.hose; R(b.x + b.w * 0.2, b.y + b.h * 0.45 - pulse(b), b.w * 0.45, b.h * 0.18, C.green); R(b.x + b.w * 0.6, b.y + b.h * 0.38 - pulse(b), b.w * 0.15, b.h * 0.32, C.k); for (let i = 0; i < 3; i++) R(b.x + b.w * 0.8, b.y + b.h * (0.3 + i * 0.15), D.U * 2, D.U * 2, C.white); });
+    const icB = (k: string, b: any) => { if (!pic(k)) return false; const o = pulse(b); shadow(b.x + b.w / 2, b.y + b.h - D.U * 0.5, b.w * 0.8); fitPic(k, b.x, b.y - o, b.w, b.h); return true; };
+    if (this.phase === 1 && !icB("icon-soap", this.soap)) iconBtn(this.soap, C.pink, () => { const b = this.soap; box(b.x + b.w * 0.3, b.y + b.h * 0.3 - pulse(b), b.w * 0.4, b.h * 0.55, C.white, D.U); R(b.x + b.w * 0.42, b.y + b.h * 0.15 - pulse(b), b.w * 0.16, b.h * 0.15, C.k); for (let i = 0; i < 3; i++) R(b.x + b.w * (0.2 + i * 0.25), b.y + b.h * 0.12, D.U * 2, D.U * 2, C.white); });
+    if (this.phase === 2 && !icB("icon-hose", this.hose)) iconBtn(this.hose, C.blue, () => { const b = this.hose; R(b.x + b.w * 0.2, b.y + b.h * 0.45 - pulse(b), b.w * 0.45, b.h * 0.18, C.green); R(b.x + b.w * 0.6, b.y + b.h * 0.38 - pulse(b), b.w * 0.15, b.h * 0.32, C.k); for (let i = 0; i < 3; i++) R(b.x + b.w * 0.8, b.y + b.h * (0.3 + i * 0.15), D.U * 2, D.U * 2, C.white); });
     { const br = pic("wash-brush"); if (br && this.phase === 0 && this.bp && D.t - this.bt < 0.8) { const h = Math.max(MIN * 1.2, D.H * 0.22), w = h * br.naturalWidth / br.naturalHeight; g.save(); g.globalAlpha = Math.min(1, (0.8 - (D.t - this.bt)) * 4); g.translate(this.bp.x, this.bp.y); g.rotate(-0.35); g.drawImage(br, -w / 2, -h * 0.2, w, h); g.restore(); } }
   }
 }
@@ -173,7 +176,8 @@ export class ColourPark extends Game {
   paint() {
     const u = D.U; if (!cover("bg-carpark")) { R(0, 0, D.W, D.H, C.road); SC.carparkTop(); for (let x = 0; x < D.W; x += u * 12) R(x, D.H * 0.55, u * 6, u, C.white); }
     for (const s of this.spots) {
-      const x = s.x - s.w / 2, y = s.y - s.h / 2;
+      const x = s.x - s.w / 2, y = s.y - s.h / 2, bay = pic("parking-bay");
+      if (bay) { const bw = Math.min(s.w, s.h * 0.667), bx = s.x - bw / 2, tk = bayTint(bay, s.c); g.drawImage(tk, bx, y, bw, s.h); veh("car", s.x, y + s.h * 0.7, fitU("car", bw * 0.8, s.h * 0.4), COLS[s.c], { ghost: true }); continue; }
       R(x, y, s.w, s.h, COLS[s.c]); R(x + u * 2, y + u * 2, s.w - 4 * u, s.h - 4 * u, "rgba(255,255,255,.35)");
       R(x - u, y - u, u * 2, s.h + 2 * u, C.white); R(x + s.w - u, y - u, u * 2, s.h + 2 * u, C.white);
       veh("car", s.x, s.y + s.h * 0.25, fitU("car", s.w * 0.7, s.h * 0.5), COLS[s.c], { ghost: true });
@@ -215,9 +219,11 @@ export class Light extends Game {
     else { const lw = Math.max(40, u * 12), lh = lw * 2.6, ly = vg - lh - u * 10; R(lx - u, ly + lh, u * 2, vg - ly - lh, C.k); box(lx - lw / 2, ly, lw, lh, C.k, u, C.k);
       for (let i = 0; i < 3; i++) pcircS(lx, ly + lh * (0.18 + i * 0.32), lw * 0.3, i === 0 ? (on === 0 ? "#E07A6E" : "#7c6460") : i === 1 ? (on === 1 ? C.yellow : "#8a815f") : on === 2 ? "#8CD3A0" : "#5d7a6e"); }
     // finish line: flat chequered strip painted across the road
-    { const fx = D.W * 0.88, ck = rh / 6; for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) R(fx + j * ck, rt + i * ck, ck, ck, (i + j) % 2 ? C.k : C.white); }
+    { const fim = pic("finish-line"), fx = D.W * 0.88; if (fim) { const th = rh / 4; g.save(); g.beginPath(); g.rect(fx, rt, th, rh); g.clip(); g.translate(fx + th / 2, rt + rh / 2); g.rotate(Math.PI / 2); g.drawImage(fim, -rh / 2 - 1, -th / 2, rh + 2, th); g.restore(); } }
+    if (!pic("finish-line")) { const fx = D.W * 0.88, ck = rh / 6; for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) R(fx + j * ck, rt + i * ck, ck, ck, (i + j) % 2 ? C.k : C.white); }
     veh("car", this.carX * D.W, rt + rh * 0.7, this.u, C.blue);
     const pr = this.pedal, pressed = this.hold;
+    if (pic("icon-pedal")) { const o = pressed ? u : 0; g.save(); g.globalAlpha = this.state === 2 ? 0.55 : 1; shadow(pr.x + pr.w / 2, pr.y + pr.h - u * 0.5 + o, pr.w * 0.8); fitPic("icon-pedal", pr.x, pr.y + o, pr.w, pr.h); g.restore(); } else
     iconBtn(pr, this.state === 2 ? "#E6D9D2" : C.green, () => { const cx = pr.x + pr.w / 2 + (pressed ? u : 0), cy = pr.y + pr.h / 2 + (pressed ? u : 0); if (fitPic("icon-play", cx - pr.w * 0.3, cy - pr.h * 0.3, pr.w * 0.6, pr.h * 0.6)) return; for (let i = 0; i < 3; i++) R(cx - pr.w * 0.2 + i * pr.w * 0.14, cy - pr.h * 0.2 + i * u * 0, pr.w * 0.1, pr.h * 0.4, C.white); R(cx - pr.w * 0.2, cy + pr.h * 0.2, pr.w * 0.4, u * 2, C.white); }, pressed);
   }
 }
@@ -273,3 +279,11 @@ export class Build extends Game {
 }
 import { ptri } from "./core";
 import { wheelIcon } from "./art";
+
+const BAYC: Record<string, HTMLCanvasElement> = {};
+function bayTint(bay: HTMLImageElement, c: string) {
+  if (BAYC[c]) return BAYC[c];
+  const tk = document.createElement("canvas"); tk.width = 200; tk.height = 300; const tc = tk.getContext("2d")!;
+  tc.drawImage(bay, 0, 0, 200, 300); tc.globalCompositeOperation = "multiply"; tc.fillStyle = COLS[c]; tc.fillRect(10, 10, 180, 280); tc.globalCompositeOperation = "destination-in"; tc.drawImage(bay, 0, 0, 200, 300);
+  return (BAYC[c] = tk);
+}

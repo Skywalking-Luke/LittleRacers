@@ -64,12 +64,14 @@ export class Count extends Game {
 
 // 8. Road Maze (trace the road) -------------------------------------------
 const PATHS = [[[0.08, 0.75], [0.4, 0.75], [0.4, 0.4], [0.85, 0.4]], [[0.08, 0.4], [0.3, 0.4], [0.3, 0.78], [0.62, 0.78], [0.62, 0.45], [0.85, 0.45]], [[0.08, 0.8], [0.25, 0.8], [0.25, 0.45], [0.5, 0.45], [0.5, 0.8], [0.72, 0.8], [0.72, 0.5], [0.87, 0.5]]];
+const CELLS = [[[0, 2], [3, 2], [3, 0], [6, 0]], [[0, 0], [2, 0], [2, 2], [4, 2], [4, 1], [6, 1]], [[0, 2], [1, 2], [1, 0], [3, 0], [3, 2], [5, 2], [5, 1], [6, 1]]];
 const DEST = ["home", "school", "pasar"];
 export class Maze extends Game {
-  id = "maze"; rounds = 3; pts: { x: number; y: number }[] = []; segs: number[] = []; len = 0; prog = 0; holding = false; u = 4; arrived = false;
+  id = "maze"; rounds = 3; pts: { x: number; y: number }[] = []; segs: number[] = []; len = 0; prog = 0; holding = false; u = 4; arrived = false; tiles = false; T = 0; gx = 0; gy = 0; cells: { c: number; r: number; k: string; rot: number }[] = []; cols = 7; rows = 3;
   start() { this.prog = 0; this.arrived = false; this.prompt(); }
   prompt() { const d = DEST[this.round]; if (d === "pasar") say("26"); else say("x_maze", { p: word("p_" + d) }); }
   place() {
+    if (this.placeTiles()) return;
     const land = D.W > D.H; const P = PATHS[this.round];
     this.pts = P.map(([x, y]) => (land ? { x: x * D.W, y: y * D.H } : { x: (1 - y) * D.W * 1.0 + D.W * 0.0, y: x * D.H }));
     if (!land) this.pts = P.map(([x, y]) => ({ x: D.W * (0.15 + (y - 0.35) * 1.4), y: D.H * (0.18 + x * 0.8) }));
@@ -82,6 +84,7 @@ export class Maze extends Game {
   drag2(p: Pt) { if (!this.holding || this.arrived) return; const pr = this.proj(p); if (pr.dist < Math.max(MIN * 1.5, D.U * 20) && pr.d > this.prog) { this.prog = Math.min(this.len, pr.d); if (Math.random() < 0.1) sfx.rub(); } if (this.prog >= this.len - 2) { this.arrived = true; const e = this.pts[this.pts.length - 1]; this.win(e.x, e.y, "27"); } }
   release() { this.holding = false; }
   paint() {
+    if (this.tiles) { this.paintTiles(); return; }
     const kind = DEST[this.round] === "pasar" ? "pasar" : "taman";
     backdrop(kind as any, 0.12); const u = D.U, w = Math.max(MIN, this.u * 16);
     SC.townMap(this.pts, w * 0.5 + u * 2, D.H * 0.14);
@@ -93,6 +96,44 @@ export class Maze extends Game {
     // hint footprints ahead
     const ah = this.at(Math.min(this.len, this.prog + this.len * 0.1)); if (!this.holding && !this.arrived) star(ah.x, ah.y, u * (2 + Math.sin(D.t * 3)), C.yellow);
     const c: any = this.at(this.prog); veh("car", c.x, c.y + this.u * 5, this.u, C.red, { flip: c.dx < 0 });
+  }
+  placeTiles() {
+    this.tiles = false; const imS = pic("maze-road-straight"), imC = pic("maze-road-corner"), imE = pic("maze-road-end-cap"); if (!imS || !imC || !imE) return false;
+    const land = D.W > D.H, hud = this.back.y + this.back.h + D.U * 2, C0 = land ? 7 : 3, R0 = land ? 3 : 7;
+    this.T = Math.floor(Math.min(D.W / C0, (D.H - hud - D.U * 2) / R0)); this.cols = C0; this.rows = R0;
+    this.gx = Math.round((D.W - C0 * this.T) / 2); this.gy = Math.round(hud + (D.H - hud - R0 * this.T) / 2);
+    const P = CELLS[this.round].map(([c, r]) => (land ? { c, r } : { c: r, r: c })), T = this.T, D4 = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    const cells: { c: number; r: number }[] = []; for (let i = 0; i < P.length; i++) { if (!i) { cells.push(P[0]); continue; } const a = P[i - 1], b = P[i], n = Math.max(Math.abs(b.c - a.c), Math.abs(b.r - a.r)), dc = Math.sign(b.c - a.c), dr = Math.sign(b.r - a.r); for (let k = 1; k <= n; k++) cells.push({ c: a.c + dc * k, r: a.r + dr * k }); }
+    const di = (a: { c: number; r: number }, b: { c: number; r: number }) => D4.findIndex(([x, y]) => x === Math.sign(b.c - a.c) && y === Math.sign(b.r - a.r));
+    const pts: { x: number; y: number }[] = []; this.cells = [];
+    cells.forEach((cl, i) => {
+      const cx = this.gx + (cl.c + 0.5) * T, cy = this.gy + (cl.r + 0.5) * T, pv = cells[i - 1], nx = cells[i + 1];
+      if (!pv) { this.cells.push({ ...cl, k: "s", rot: 1 - (di(cl, nx) % 2) }); pts.push({ x: cx, y: cy }); return; }
+      if (!nx) { const dp = di(cl, pv); this.cells.push({ ...cl, k: "e", rot: (dp + 1) % 4 }); const d = D4[dp]; pts.push({ x: cx - d[0] * T * 0.12, y: cy - d[1] * T * 0.12 }); return; }
+      const dp = di(cl, pv), dn = di(cl, nx);
+      if (dp % 2 === dn % 2) { this.cells.push({ ...cl, k: "s", rot: 1 - (dp % 2) }); pts.push({ x: cx, y: cy }); return; }
+      let rot = 0; for (let r = 0; r < 4; r++) { const o = [(2 + r) % 4, (1 + r) % 4]; if (o.includes(dp) && o.includes(dn)) rot = r; }
+      this.cells.push({ ...cl, k: "c", rot });
+      const d1 = D4[dp], d2 = D4[dn], ox = cx + (T / 2) * (d1[0] + d2[0]), oy = cy + (T / 2) * (d1[1] + d2[1]);
+      for (let k = 0; k <= 6; k++) { const th = (k / 6) * Math.PI / 2; pts.push({ x: ox + (T / 2) * (-d2[0] * Math.cos(th) - d1[0] * Math.sin(th)), y: oy + (T / 2) * (-d2[1] * Math.cos(th) - d1[1] * Math.sin(th)) }); }
+    });
+    this.pts = pts; this.segs = []; this.len = 0; for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); this.segs.push(l); this.len += l; }
+    this.u = fitU("car", T * 0.8, T * 0.36); this.tiles = true; return true;
+  }
+  paintTiles() {
+    const T = this.T, u = D.U, gim = pic("maze-grass"), im: Record<string, HTMLImageElement> = { s: pic("maze-road-straight")!, c: pic("maze-road-corner")!, e: pic("maze-road-end-cap")! };
+    R(0, 0, D.W, D.H, "#b9cf86");
+    const c0 = -Math.ceil(this.gx / T), c1 = Math.ceil((D.W - this.gx) / T), r0 = -Math.ceil(this.gy / T), r1 = Math.ceil((D.H - this.gy) / T);
+    if (gim) { const th = Math.ceil(T / 2); for (let r = r0 * 2; r < r1 * 2; r++) for (let c = c0; c < c1; c++) { g.save(); const x = Math.round(this.gx + c * T), y = Math.round(this.gy + (r * T) / 2); g.translate(x, y); if (r & 1) { g.translate(0, th); g.scale(1, -1); } g.drawImage(gim, 0, 0, Math.ceil(T) + 1, th + 1); g.restore(); } }
+    const road = new Set(this.cells.map((c) => c.c + "," + c.r)), hs = (c: number, r: number) => { let h = (c * 73856093) ^ (r * 19349663) ^ (this.round * 83492791); h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; };
+    const top: { k: string; x: number; y: number; w: number }[] = [];
+    for (let r = r0; r < r1; r++) for (let c = c0; c < c1; c++) { if (road.has(c + "," + r)) continue; const h = hs(c, r), x = this.gx + (c + 0.5) * T + (hs(r, c) - 0.5) * T * 0.25, y = this.gy + (r + 0.5) * T + (hs(c + 9, r) - 0.5) * T * 0.2; if (h < 0.3) top.push({ k: "maze-tree-top", x, y, w: T * (0.7 + h) }); else if (h < 0.42) top.push({ k: "maze-house-top", x, y, w: T * 0.8 }); }
+    for (const cl of this.cells) { const x = Math.round(this.gx + cl.c * T), y = Math.round(this.gy + cl.r * T), w = Math.round(this.gx + (cl.c + 1) * T) - x; g.save(); g.translate(x + w / 2, y + w / 2); g.rotate((cl.rot * Math.PI) / 2); g.drawImage(im[cl.k], -w / 2 - 0.5, -w / 2 - 0.5, w + 1, w + 1); g.restore(); }
+    for (const t of top) { shadow(t.x + t.w * 0.08, t.y + t.w * 0.12, t.w * 0.95); const p = pic(t.k); if (p) g.drawImage(p, t.x - t.w / 2, t.y - t.w / 2, t.w, t.w); }
+    const e = this.pts[this.pts.length - 1];
+    place(DEST[this.round], e.x, e.y + T * 0.3, Math.max(2, this.u * 0.9));
+    const ah = this.at(Math.min(this.len, this.prog + this.len * 0.1)); if (!this.holding && !this.arrived) star(ah.x, ah.y, u * (2 + Math.sin(D.t * 3)), C.yellow);
+    const c: any = this.at(this.prog); shadow(c.x, c.y + this.u * 5, this.u * 17); veh("car", c.x, c.y + this.u * 5, this.u, C.red, { flip: c.dx < 0 });
   }
 }
 
@@ -115,8 +156,10 @@ export class ShapeGarage extends Game {
   }
   tick(dt: number) { if (this.drag !== this.car) ease(this.car, dt, 5); this.car.wig = Math.max(0, this.car.wig - dt); if (this.inT) this.inT = Math.min(1, this.inT + dt); }
   paint() {
-    { const gy = backdrop("plain", 0.45); const t0 = this.tun[0]; SC.hillside(D.W / 2, t0 ? t0.y - t0.h * 0.75 : gy * 0.5, Math.max(gy, t0 ? t0.y + t0.h / 2 : gy), D.U); } const u = D.U;
-    for (const t of this.tun) { const x = t.x - t.w / 2, y = t.y - t.h / 2; box(x, y, t.w, t.h, t.col, u); R(x + t.w * 0.15, y + t.h * 0.45, t.w * 0.7, t.h * 0.55 - u, "#5e5a6e"); shape(t.s, t.x, y + t.h * 0.24, t.h * 0.15, C.white, u); }
+    const hill = pic("shape-hill");
+    if (hill) { const t0 = this.tun[0], gb = t0 ? t0.y + t0.h / 2 : D.H * 0.5; backdrop("plain", Math.min(0.62, Math.max(0.3, (gb - D.U * 4) / D.H))); }
+    else { const gy = backdrop("plain", 0.45); const t0 = this.tun[0]; SC.hillside(D.W / 2, t0 ? t0.y - t0.h * 0.75 : gy * 0.5, Math.max(gy, t0 ? t0.y + t0.h / 2 : gy), D.U); } const u = D.U;
+    for (const t of this.tun) { const x = t.x - t.w / 2, y = t.y - t.h / 2; if (hill) { const hw = t.w * 1.18, hh = hw * hill.naturalHeight / hill.naturalWidth, gb = t.y + t.h / 2; shadow(t.x, gb, hw * 0.8); g.drawImage(hill, t.x - hw / 2, gb - hh + u, hw, hh); const sy = gb - hh * 0.72; box(t.x - hh * 0.12, sy - hh * 0.12, hh * 0.24, hh * 0.24, t.col, u); shape(t.s, t.x, sy, hh * 0.09, C.white, u); continue; } box(x, y, t.w, t.h, t.col, u); R(x + t.w * 0.15, y + t.h * 0.45, t.w * 0.7, t.h * 0.55 - u, "#5e5a6e"); shape(t.s, t.x, y + t.h * 0.24, t.h * 0.15, C.white, u); }
     const c = this.car; if (this.inT >= 1) return;
     g.save(); if (this.inT) g.globalAlpha = 1 - this.inT;
     const gy = c.y + c.h * 0.35; veh("car", c.x + wx(c), gy, c.u, c.col);
@@ -159,7 +202,9 @@ export class LetterRoad extends Game {
     const wx0 = D.W / 2 - (this.w.length * bs * 1.1) / 2;
     veh(this.vk, wx0 - bs * 1.2, by + bs * 0.4, fitU(this.vk, bs * 1.6, bs * 0.9), C.yellow);
     for (let i = 0; i < this.w.length; i++) { lTile(wx0 + i * bs * 1.1, by - bs / 2, bs, bs, i < this.got ? C.yellow : C.cream, u); if (i < this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, C.k, "center", false); else if (i === this.got) txt(this.w[i], wx0 + i * bs * 1.1 + bs / 2, by, bs * 0.55, "#d8d0c4", "center", false); }
-    for (const w of this.wave) if (w.x > -0.1 && !w.hit) { const x = w.x * D.W, y = this.lanesY[w.lane], s = this.lh * 0.66; R(x - s / 2 - u, y - s / 2 - u * 3, u * 2, s + u * 3, C.k); R(x + s / 2 - u, y - s / 2 - u * 3, u * 2, s + u * 3, C.k); lTile(x - s / 2, y - s / 2 - u * 4, s, s * 0.8, w.l === this.w[this.got] ? C.yellow : C.cream, u); txt(w.l, x, y - u * 4 + s * 0.05, s * 0.45, C.k, "center", false); }
+    for (const w of this.wave) if (w.x > -0.1 && !w.hit) { const x = w.x * D.W, y = this.lanesY[w.lane], s = this.lh * 0.66, bd = pic("letter-sign-board");
+      if (bd) { const bw = s * 1.4, bh = bw * bd.naturalHeight / bd.naturalWidth, base = y + u * 2, top = base - bh; shadow(x, base, bw * 0.7); g.drawImage(bd, x - bw / 2, top, bw, bh); if (w.l === this.w[this.got]) { g.save(); g.globalAlpha = 0.65; g.fillStyle = C.yellow; g.fillRect(x - bw * 0.43, top + bh * 0.07, bw * 0.86, bh * 0.58); g.restore(); } txt(w.l, x, top + bh * 0.36, bh * 0.42, C.k, "center", false); continue; }
+      R(x - s / 2 - u, y - s / 2 - u * 3, u * 2, s + u * 3, C.k); R(x + s / 2 - u, y - s / 2 - u * 3, u * 2, s + u * 3, C.k); lTile(x - s / 2, y - s / 2 - u * 4, s, s * 0.8, w.l === this.w[this.got] ? C.yellow : C.cream, u); txt(w.l, x, y - u * 4 + s * 0.05, s * 0.45, C.k, "center", false); }
     const cy = top + this.lh * (this.carL + 0.5); veh("car", 0.2 * D.W, cy + this.u * 5, this.u, C.red);
   }
 }
@@ -169,11 +214,28 @@ const SETS = [["moto", "car", "bus"], ["moto", "van", "lorry"], ["car", "lorry",
 const SCALE: Record<string, number> = { moto: 0.55, car: 0.8, van: 0.95, lorry: 1.1, bus: 1.25 };
 export class Race extends Game {
   id = "race"; rounds = 3; vs: Item[] = []; slots: Item[] = []; filled = 0; racing = 0; base = 4;
+  ln: { c: number; h: number; t: number; s: number }[] = []; kerb = 0; lanesTop = 0; art = false;
   start() { this.vs = shuffle(SETS[this.round].map((k, i) => mkItem({ k, rank: i, col: VCOL[(i + this.round) % 6], slot: -1 }))); this.filled = 0; this.racing = 0; this.prompt(); }
   prompt() { say(this.racing ? "35" : "33"); }
+  // Sylphy's lane backgrounds, bottom-aligned so all three lane bands always stay on screen
+  laneBg() { const land = D.W > D.H, k = land ? "bg-race-lanes" : "bg-race-lanes-portrait", im = pic(k); if (!im) return null; const sc = Math.max(D.W / im.naturalWidth, D.H / im.naturalHeight), h = im.naturalHeight * sc, w = im.naturalWidth * sc, top = D.H - h; return { im, x: (D.W - w) / 2, top, w, h, y: (f: number) => top + f * h }; }
+  laneU(v: Item, i: number) { return this.base * SCALE[v.k] * this.ln[i].s; }
+  laneHy(v: Item, i: number) { const l = this.ln[i]; return l.c + l.h * 0.3 - (VW[v.k][1] * this.laneU(v, i)) / 2; }
   place() {
-    const land = D.W > D.H, top = this.back.y + this.back.h + D.U * 4;
-    this.base = Math.max(2, Math.floor(Math.min(D.W * (land ? 0.3 : 0.6), D.H * 0.3) / 28));
+    const land = D.W > D.H, top = this.back.y + this.back.h + D.U * 4, lb = this.laneBg();
+    this.base = Math.max(2, Math.floor(Math.min(D.W * (land ? 0.3 : 0.6), D.H * 0.3) / 28)); this.art = !!lb;
+    if (lb) {
+      const F = land ? [0.657, 0.757, 0.871, 1.0] : [0.49, 0.639, 0.809, 1.0], C0 = land ? [0.707, 0.814, 0.936] : [0.565, 0.724, 0.904];
+      this.ln = [0, 1, 2].map((i) => ({ c: lb.y(C0[i]), h: lb.y(F[i + 1]) - lb.y(F[i]), t: lb.y(F[i]), s: [0.78, 0.89, 1][i] }));
+      this.kerb = lb.y(F[0]) - D.U * 0.5; this.lanesTop = lb.y(F[0]);
+      this.slots = [0, 1, 2].map((i) => mkItem({ x: land ? D.W * 0.2 : D.W * 0.5, y: this.ln[i].c, w: land ? D.W * 0.34 : D.W * 0.8, h: this.ln[i].h }));
+      const avail = land ? D.W * 0.4 : D.W * 0.94, nn = Math.max(1, this.vs.length), wsum = (b: number) => this.vs.reduce((a, v) => a + VW[v.k][0] * b * SCALE[v.k], 0) + (nn - 1) * D.U * 2;
+      while (this.base > 2 && wsum(this.base) > avail) this.base--;
+      const gap = nn > 1 ? Math.min((avail - wsum(this.base) + (nn - 1) * D.U * 2) / (nn - 1), D.W * 0.08) : 0; let cxr = land ? D.W * 0.42 : D.W * 0.03 + (avail - wsum(this.base) - (nn - 1) * (gap - D.U * 2)) / 2; const wx0: number[] = [];
+      this.vs.forEach((v) => { const w = VW[v.k][0] * this.base * SCALE[v.k]; wx0.push(cxr + w / 2); cxr += w + gap; });
+      this.vs.forEach((v, i) => { v.u = this.base * SCALE[v.k]; v.w = Math.max(MIN, VW[v.k][0] * v.u); v.h = Math.max(MIN, VW[v.k][1] * v.u); if (v.slot < 0) { v.hx = wx0[i]; v.hy = this.kerb - (VW[v.k][1] * v.u) / 2; } else { v.u = this.laneU(v, v.slot); v.hx = this.slots[v.slot].x; v.hy = this.laneHy(v, v.slot); } v.x = v.hx; v.y = v.hy; });
+      return;
+    }
     this.slots = [0, 1, 2].map((i) => mkItem({ x: land ? D.W * 0.2 : D.W * 0.5, y: top + (D.H * (land ? 0.55 : 0.48) - top) * ((i + 0.5) / 3) + D.U * 4, w: land ? D.W * 0.34 : D.W * 0.8, h: (D.H * (land ? 0.55 : 0.48) - top) / 3 }));
     this.vs.forEach((v, i) => { v.u = Math.max(2, Math.round(this.base * SCALE[v.k])); v.w = Math.max(MIN, VW[v.k][0] * v.u); v.h = Math.max(MIN, VW[v.k][1] * v.u); if (v.slot < 0) { v.hx = land ? D.W * (0.5 + i * 0.17) : D.W * (0.2 + i * 0.3); v.hy = land ? D.H * 0.78 : D.H * 0.8; } else { v.hx = this.slots[v.slot].x; v.hy = this.slots[v.slot].y; } v.x = v.hx; v.y = v.hy; });
     if (!land) this.slots.forEach((s, i) => (s.y = top + (D.H * 0.62 - top) * ((i + 0.5) / 3)));
@@ -182,12 +244,25 @@ export class Race extends Game {
   press(p: Pt) { if (this.racing) return; for (const v of this.vs) if (v.slot < 0 && hit(p, rectOf(v), D.U * 2)) { this.grab(v, p); return; } }
   release() {
     const v = this.drag; if (!v) return;
-    if (v.rank === this.filled) { if (v.y < D.H * 0.66 || this.slots.some((s) => hit({ x: v.x, y: v.y }, rectOf(s)))) { v.slot = this.filled; const s = this.slots[this.filled++]; v.hx = s.x; v.hy = s.y; sfx.pop(); say(["x_praise1", "x_praise3", "34"][this.filled - 1]); if (this.filled === 3) setTimeout(() => { this.racing = 0.01; say("35"); sfx.vroom(); }, 2000); } }
+    if (v.rank === this.filled) {
+      const onLane = this.art ? v.y + (VW[v.k][1] * v.u) / 2 > this.lanesTop + this.ln[0].h * 0.5 : v.y < D.H * 0.66;
+      if (onLane || this.slots.some((s) => hit({ x: v.x, y: v.y }, rectOf(s)))) { v.slot = this.filled; const s = this.slots[this.filled++]; v.hx = s.x; if (this.art) { v.u = this.laneU(v, v.slot); v.hy = this.laneHy(v, v.slot); } else v.hy = s.y; sfx.pop(); say(["x_praise1", "x_praise3", "34"][this.filled - 1]); if (this.filled === 3) setTimeout(() => { this.racing = 0.01; say("35"); sfx.vroom(); }, 2000); }
+    }
     else this.oops(v, "x_race_hint");
   }
   tick(dt: number) { this.vs.forEach((v) => { if (this.drag !== v) ease(v, dt, 5); else v.wig = 0; }); if (this.racing) { this.racing += dt; this.vs.forEach((v) => (v.hx = v.x = this.slots[v.slot].x + Math.pow(this.racing, 2) * D.W * 0.08 * (1.2 - v.rank * 0.15))); if (this.racing > 3.2) this.win(D.W / 2, D.H / 2); } }
   paint() {
-    { const gy = backdrop("plain", 0.6); if (!cover("bg-race")) SC.raceCrowd(this.slots.length ? Math.min(gy, this.slots[0].y - this.slots[0].h / 2) : gy, D.U); } const u = D.U;
+    const lb = this.laneBg(), u = D.U;
+    if (lb && this.art) {
+      backdrop("plain", 0.5); g.drawImage(lb.im, lb.x, lb.top, lb.w, lb.h);
+      const t = this.lanesTop, len = D.H - t, fx = D.W * 0.85, th = Math.min(len * 0.25, D.W * 0.06), fl = pic("finish-line");
+      if (fl) { g.save(); g.beginPath(); g.rect(fx, t, th, len); g.clip(); g.translate(fx + th / 2, t + len / 2); g.rotate(Math.PI / 2); g.drawImage(fl, -len / 2 - 1, -th / 2, len + 2, th); g.restore(); }
+      prop("race-flag", fx + th + u * 5, this.kerb + u * 2, Math.min(D.H * 0.22, len * 0.9));
+      for (let i = 0; i < 3; i++) { const vs = this.vs.find((v) => v.slot === i); if (!vs && !this.racing) { const want = SETS[this.round][i], l = this.ln[i]; veh(want, this.slots[i].x, l.c + l.h * 0.3, this.base * SCALE[want] * l.s, C.k, { ghost: true }); } }
+      for (const v of [...this.vs].sort((a, b) => a.y + (VW[a.k][1] * a.u) / 2 - (b.y + (VW[b.k][1] * b.u) / 2))) veh(v.k, v.x + wx(v), v.y + (VW[v.k][1] * v.u) / 2, v.u, v.col);
+      return;
+    }
+    { const gy = backdrop("plain", 0.6); if (!cover("bg-race")) SC.raceCrowd(this.slots.length ? Math.min(gy, this.slots[0].y - this.slots[0].h / 2) : gy, D.U); }
     for (let i = 0; i < 3; i++) { const s = this.slots[i]; if (!tarmac(0, s.y - s.h / 2 + u, D.W, s.h - u * 2)) R(0, s.y - s.h / 2 + u, D.W, s.h - u * 2, C.road); R(s.x - s.w / 2, s.y + s.h / 2 - u * 3, u, u * 2, C.white); const vs = this.vs.find((v) => v.slot === i); if (!vs && !this.racing) { const want = SETS[this.round][i]; veh(want, s.x, s.y + s.h * 0.4, Math.max(2, Math.round(this.base * SCALE[want])), C.k, { ghost: true }); } }
     prop("race-flag", D.W * 0.85 + u * 4, this.slots[0].y - this.slots[0].h / 2 + u, this.slots[0].h * 0.9);
     for (let y = 0; y < 6; y++) R(D.W * 0.85, this.slots[0].y - this.slots[0].h / 2 + y * this.slots[0].h * 0.5, u * 3, this.slots[0].h * 0.25, y % 2 ? C.white : C.k);
@@ -254,7 +329,7 @@ export class Helper extends Game {
 const ROUTES = [["petrol", "atuk"], ["petrol", "durian", "atuk"], ["petrol", "durian", "atuk"]];
 const EXTRA = [["durian"], ["school"], ["school", "pasar"]];
 export class Kampung extends Game {
-  id = "kampung"; rounds = 3; route: string[] = []; tok = 0; places: Item[] = []; step = 0; showing = true; car = { x: 0, y: 0, tx: 0, ty: 0 }; showI = -1; pu = 3; signAt = { x: 0, y: 0 }; cam = 0; camMax = 0; follow = false;
+  id = "kampung"; rounds = 3; route: string[] = []; tok = 0; places: Item[] = []; step = 0; showing = true; car = { x: 0, y: 0, tx: 0, ty: 0 }; showI = -1; pu = 3; signAt = { x: 0, y: 0 }; signS = 1; start0 = { x: 0, y: 0 }; farB = 0; nearB = 0; cam = 0; camMax = 0; follow = false;
   start() {
     this.route = ROUTES[this.round]; this.step = 0; this.showing = true; this.showI = -1;
     this.places = shuffle([...this.route, ...EXTRA[this.round]]).map((k) => mkItem({ k, done: false }));
@@ -272,26 +347,42 @@ export class Kampung extends Game {
   }
   prompt() { if (this.showing || this.step === 0) this.show(); else say("x_kp_next"); }
   place() {
-    // stops stand on the painted ground band of bg-kampung (below its horizon), spaced in a grid with no overlaps; car + sign keep clear of the HUD
-    const land = D.W > D.H, n = this.places.length, u = D.U, hud = this.back.y + this.back.h + u * 2;
-    const gTop = Math.max(hud + u * 10, coverY("bg-kampung", 0.74) ?? D.H * 0.62), bot = D.H - u * 2;
-    const cols = land ? n : Math.min(3, n), rows = Math.ceil(n / cols);
-    let x0 = land ? D.W * 0.2 : D.W * 0.02, x1 = D.W * 0.98;
-    let cw = (x1 - x0) / cols;
-    let ch = (bot - gTop - u * 4) / rows;
-    this.pu = Math.max(2, Math.floor(Math.min(cw / 33, ch / 28)));
-    // short landscape phones: keep portrait-sized stops on a wider road and let the view follow the car (off for reduced motion)
-    const rm = matchMedia("(prefers-reduced-motion: reduce)").matches, ppu = Math.max(2, Math.floor((D.H * 0.96) / 3 / 33));
-    this.follow = land && D.H < 600 && !rm && ppu > this.pu; this.camMax = 0;
-    if (this.follow) { this.pu = ppu; const fw = 36 * ppu; x0 = D.W * 0.22; x1 = x0 + fw * n; this.camMax = Math.max(0, x1 + D.W * 0.03 - D.W); cw = fw; ch = Math.max(ch, 28 * ppu); if (!this.camMax) this.follow = false; }
+    // OLD mechanic back: the stops are dispersed over the painted ground, a winding road between them. Depth: far = higher, ~0.7 size, paler; near = lower, full size.
+    // Portrait: zig-zag from the horizon down to the sand. Landscape: a staggered far/near row (long road follows the car on short phones). No overlaps, nothing in the sky.
+    const land = D.W > D.H, n = this.places.length, u = D.U, hud = this.back.y + this.back.h + u * 2, yAt = kYAt();
+    this.farB = yAt(0.765); this.nearB = D.H - u * 2; const Z = this.nearB - this.farB;
+    const rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const depth = (i: number) => (land ? [0.95, 0.12, 0.8, 0.05, 0.9][i % 5] : n > 1 ? i / (n - 1) : 1);
+    const sc = (t: number) => 0.7 + 0.3 * t;
+    type P = { x: number; base: number; s: number; w: number; h: number };
+    const mk = (pu: number, i: number, x: number): P => { const t = depth(i), s = sc(t); return { x, base: this.farB + t * Z, s, w: Math.max(MIN, 32 * pu * s), h: Math.max(MIN, 26 * pu * s) }; };
+    const rc = (p: P) => ({ x: p.x - p.w / 2, y: p.base - p.h, w: p.w, h: p.h });
+    const clash = (a: P, b: P) => { const A = rc(a), B = rc(b), m = u; return A.x < B.x + B.w + m && B.x < A.x + A.w + m && A.y < B.y + B.h + m && B.y < A.y + A.h + m; };
+    const lay = (pu: number): P[] => {
+      const out: P[] = [];
+      for (let i = 0; i < n; i++) {
+        if (!land) { out.push(mk(pu, i, D.W * (i % 2 ? 0.67 : 0.36))); continue; }
+        let p = mk(pu, i, 0); p.x = i ? out[i - 1].x + p.w * 0.25 : D.W * 0.24 + p.w / 2;
+        while (out.some((q) => clash(p, q)) && p.x < D.W * 6) p.x += 2;
+        out.push(p);
+      }
+      return out;
+    };
+    const ok = (L: P[], lim: number) => L.every((p, i) => p.x - p.w / 2 >= D.W * 0.01 && p.x + p.w / 2 <= lim && p.base - p.h >= hud && L.every((q, j) => j <= i || !clash(p, q)));
+    let pu = 2, L = lay(2); this.follow = false; this.camMax = 0;
+    for (let c = 12; c >= 2; c--) { const t = lay(c); if (ok(t, D.W * 0.985)) { pu = c; L = t; break; } }
+    // short landscape phones whose stops would shrink below portrait size: keep portrait-sized stops on a longer road and let the view follow the car (off for reduced motion)
+    if (land && D.H < 600 && !rm && pu < 3) { pu = 3; L = lay(3); const right = Math.max(...L.map((p) => p.x + p.w / 2)); this.camMax = Math.max(0, right + D.W * 0.03 - D.W); this.follow = this.camMax > 0; }
     if (!this.follow) this.cam = 0;
-    this.places.forEach((p, i) => {
-      const r = Math.floor(i / cols), inRow = Math.min(cols, n - r * cols), c = i % cols, rx0 = x0 + ((cols - inRow) * cw) / 2;
-      p.w = Math.max(MIN, 30 * this.pu); p.h = Math.max(MIN, 26 * this.pu);
-      const bottom = bot - (rows - 1 - r) * ch; p.x = p.hx = rx0 + cw * (c + 0.5); p.y = p.hy = bottom - p.h * 0.45;
-    });
-    this.signAt = land ? { x: D.W * 0.1, y: gTop + u * 6 } : { x: D.W * 0.86, y: gTop };
-    if (this.step === 0 || !this.car.x) { this.car.x = this.car.tx = land ? D.W * 0.1 : D.W * 0.16; this.car.y = this.car.ty = land ? bot : gTop; }
+    this.pu = pu;
+    this.places.forEach((p, i) => { const q = L[i]; p.w = q.w; p.h = q.h; p.x = p.hx = q.x; p.y = p.hy = q.base - q.h * 0.45; });
+    const sg = sc(0);
+    this.signAt = land ? { x: D.W * 0.1, y: this.farB + u } : { x: D.W * 0.9, y: this.farB };
+    this.signS = sg;
+    const cs = land ? { x: D.W * 0.1, y: this.nearB } : { x: D.W * 0.12, y: this.farB };
+    this.start0 = cs;
+    if (this.step === 0 || !this.car.x) { this.car.x = this.car.tx = cs.x; this.car.y = this.car.ty = cs.y; }
+    else { const last = this.places.find((q) => q.k === this.route[this.step - 1]); if (last) { this.car.x = this.car.tx = last.x - last.w * 0.45; this.car.y = this.car.ty = last.y + last.h * 0.45; } }
   }
   press(q: Pt) {
     if (this.showing) return; const p = { ...q, x: q.x + this.cam };
@@ -306,27 +397,42 @@ export class Kampung extends Game {
     // camera lags gently behind the car: heavy easing + low max speed, no snaps
     if (this.follow) { const t = Math.min(this.camMax, Math.max(0, c.x - D.W * 0.45)); let v = (t - this.cam) * Math.min(1, dt * 0.7); const mx = D.W * 0.18 * dt; v = Math.max(-mx, Math.min(mx, v)); this.cam += v; } }
   paint() {
-    backdrop("kampung", 0.74); const u = D.U;
-    // trees stand on the painted grass line (tree.png / palm.png planted, with shadow + grass patch), never in the sky
+    const u = D.U, yAt = kYAt(), zb = zoomBg("bg-kampung"); if (!zb) backdrop("kampung", 0.62);
+    const gT = yAt(0.735), carS = (y: number) => 0.7 + 0.3 * Math.max(0, Math.min(1, (y - this.farB) / Math.max(1, this.nearB - this.farB)));
     g.save(); g.translate(-this.cam, 0);
-    { const gy = coverY("bg-kampung", 0.755) ?? D.H * 0.62, ww = D.W + this.camMax, xs = [0.38, 0.64]; for (let x = D.W * 1.2; x < ww; x += D.W * 0.26) xs.push(x / D.W);
-      xs.forEach((f, i) => { if (i % 2) SC.palm(D.W * f, gy, u * 1.1); else SC.tree(D.W * f, gy, u * 1.5); }); }
-    g.restore();
-    g.save(); g.translate(-this.cam, 0);
-    // dirt road connecting visited places
-    g.strokeStyle = "#D9C6A5"; g.lineWidth = Math.max(MIN * 0.4, this.pu * 6); g.lineCap = "round"; g.beginPath();
-    const pts = this.places.slice().sort((a, b) => (D.W > D.H ? a.x - b.x : a.y - b.y)); pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y + p.h * 0.45) : g.moveTo(p.x, p.y + p.h * 0.45))); g.stroke();
+    // a few trees stand behind the far line (tree.png / palm.png planted with shadow + grass), only in gaps between stops
+    { const ww = D.W + this.camMax, th = u * 1.3 * 21 * 0.7; let k = 0;
+      for (let x = D.W * 0.5; x < ww; x += D.W * 0.31, k++) { if (this.places.some((p) => Math.abs(p.x - x) < p.w * 0.9 + th * 0.4) || Math.abs(x - this.signAt.x) < th) continue; if (k % 2) SC.palm(x, gT, u * 1.1 * 0.8); else SC.tree(x, gT, u * 1.3 * 0.8); } }
+    // winding dirt road: start -> each stop in order along the ground, narrower and paler toward the horizon
+    { const land = D.W > D.H, nodes = [{ x: this.start0.x, y: this.start0.y }, ...this.places.slice().sort((a, b) => (land ? a.x - b.x : (a.y - b.y))).map((p) => ({ x: p.x, y: p.y + p.h * 0.45 }))];
+      g.lineCap = "round"; for (let pass = 0; pass < 2; pass++) for (let i = 1; i < nodes.length; i++) { const a = nodes[i - 1], b = nodes[i], s = carS((a.y + b.y) / 2), w = Math.max(MIN * 0.3, this.pu * 5.5 * s);
+        g.strokeStyle = pass ? "rgba(228,210,176,.95)" : "rgba(196,168,126,.35)"; g.lineWidth = pass ? w : w * 1.25; g.beginPath(); g.moveTo(a.x, a.y);
+        if (land) g.bezierCurveTo((a.x + b.x) / 2, a.y, (a.x + b.x) / 2, b.y, b.x, b.y); else g.bezierCurveTo(a.x, (a.y + b.y) / 2, b.x, (a.y + b.y) / 2, b.x, b.y); g.stroke(); } }
+    // everything is painted far -> near so nearer props overlap farther ones
+    type Dr = { y: number; f: () => void };
+    const list: Dr[] = [];
     for (let i = 0; i < this.places.length; i++) {
-      const p = this.places[i], hl = this.showI === i;
-      if (hl) { g.fillStyle = "rgba(255,240,180,.8)"; g.beginPath(); g.arc(p.x, p.y, p.w * 0.6, 0, 7); g.fill(); }
-      place(p.k, p.x + wx(p), p.y + p.h * 0.45 + bobY(p), this.pu);
-      if (p.done) star(p.x + p.w * 0.45, p.y - p.h * 0.45, u * 3, C.yellow);
+      const p = this.places[i], hl = this.showI === i, base = p.y + p.h * 0.45, t = Math.max(0, Math.min(1, (base - this.farB) / Math.max(1, this.nearB - this.farB))), s = 0.7 + 0.3 * t;
+      list.push({ y: base, f: () => {
+        if (hl) { g.fillStyle = "rgba(255,240,180,.8)"; g.beginPath(); g.arc(p.x, p.y, p.w * 0.6, 0, 7); g.fill(); }
+        g.save(); g.globalAlpha = 0.8 + 0.2 * t; place(p.k, p.x + wx(p), base + bobY(p), this.pu * s); g.restore(); // far = slightly paler
+        if (p.done) star(p.x + p.w * 0.45, base - p.h * 0.95, u * 3, C.yellow); } });
     }
-    veh("car", this.car.x, this.car.y, Math.max(2, this.pu), C.red, { flip: this.car.tx < this.car.x - 2 });
+    list.push({ y: this.car.y, f: () => veh("car", this.car.x, this.car.y, Math.max(1.4, this.pu * carS(this.car.y)), C.red, { flip: this.car.tx < this.car.x - 2 }) });
     // signpost stands on the ground beside the car start, clear of the stops and their highlight
-    SC.kampungSign(this.signAt.x, this.signAt.y, D.U * 0.8, S.lang === "bm" ? "KAMPUNG →" : "KAMPUNG →"); g.restore();
+    list.push({ y: this.signAt.y, f: () => SC.kampungSign(this.signAt.x, this.signAt.y, D.U * 0.8, "KAMPUNG →") });
+    list.sort((a, b) => a.y - b.y).forEach((d) => d.f());
+    g.restore();
   }
 }
+
+/** y on screen at fraction f of bg-kampung's height; the Kampung view zooms the painted ground in (bottom-aligned) so the stops get real depth */
+function kYAt(): (f: number) => number {
+  const im = pic("bg-kampung"), z = D.W > D.H ? 1.45 : 2.0;
+  if (!im) return (f) => D.H * (0.55 + (f - 0.7) * 1.5);
+  const s = Math.max(D.W / im.naturalWidth, (D.H * z) / im.naturalHeight), h = im.naturalHeight * s, top = D.H - h; return (f) => top + f * h;
+}
+function zoomBg(k: string) { const im = pic(k); if (!im) return false; const z = D.W > D.H ? 1.45 : 2.0, s = Math.max(D.W / im.naturalWidth, (D.H * z) / im.naturalHeight), w = im.naturalWidth * s, h = im.naturalHeight * s; g.drawImage(im, (D.W - w) / 2, D.H - h, w, h); return true; }
 
 function pcircF(x: number, y: number, r: number, c: string) { g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
 function face2(x: number, y: number, u: number) { R(x - u * 0.6, y - u * 0.3, u * 0.4, u * 0.4, C.k); R(x + u * 0.2, y - u * 0.3, u * 0.4, u * 0.4, C.k); }

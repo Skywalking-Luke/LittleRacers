@@ -35,10 +35,14 @@ RIGHT=set()
 lst={}
 for f in sorted(glob.glob("art/*.png")+glob.glob("art/*.jpg")):
   n=os.path.splitext(os.path.basename(f))[0]
-  if n in SKIP or "preview" in n: continue
+  if n in SKIP or "preview" in n.lower(): continue
   im=Image.open(f).convert("RGBA"); bg=n.startswith("bg-") or f.endswith(".jpg") or n in ("bedtime-bg",)
   if not bg and im.getchannel("A").getbbox(): im=im.crop(im.getchannel("A").getbbox())
   if n.startswith(("bedtime-","sleepy-")) and not bg and n not in RIGHT: im=im.transpose(Image.FLIP_LEFT_RIGHT)
   mx=1920 if bg else 700; s=min(1,mx/max(im.size)); im=im.resize((round(im.width*s),round(im.height*s)),Image.LANCZOS)
   (im.convert("RGB") if bg else im).save(f"public/art/{n}.webp","WEBP",quality=80,method=6); lst[n]=[im.width,im.height]
+# derived: seamless grass swatch (top 128 rows of the straight maze tile, mirrored vertically) for the maze ground
+if os.path.exists("art/maze-road-straight.png"):
+  t=Image.open("art/maze-road-straight.png").convert("RGB").crop((0,0,512,128)); gt=Image.new("RGB",(512,256)); gt.paste(t,(0,0)); gt.paste(t.transpose(Image.FLIP_TOP_BOTTOM),(0,128))
+  gt.save("public/art/maze-grass.webp","WEBP",quality=82,method=6); lst["maze-grass"]=[512,256]
 json.dump(lst,open("src/artlist.json","w"))
