@@ -163,7 +163,7 @@ export class ShapeGarage extends Game {
     const c = this.car; if (this.inT >= 1) return;
     g.save(); if (this.inT) g.globalAlpha = 1 - this.inT;
     const gy = c.y + c.h * 0.35; veh("car", c.x + wx(c), gy, c.u, c.col);
-    { const r = c.h * 0.16, rx = c.x + wx(c), rt = gy - c.u * 11; shape(c.s, rx, rt - r + u * 2, r, C.white, u); }
+    { const r = c.h * 0.16, rx = c.x + wx(c), rt = gy - c.u * 11; shape(c.s, rx, rt - r * 1.67 + u * 2, r, C.white, u); }
     g.restore();
   }
 }
