@@ -73,7 +73,7 @@ export const vs = {
     if (S.mute) return true; // muted: stay silent, no fallback beep either
     if (t - lastHonk < 400 || t - (lastKind[k] || 0) < 700) return true; // rate limit: swallow repeated taps
     const e = find("honk", k); if (!e) return false;
-    lastHonk = lastKind[k] = t; play(e, 0.65 * vol); return true;
+    lastHonk = lastKind[k] = t; play(e, 0.48 * vol); return true;
   },
   start(kind: string, vol = 1) { const k = kindOf(kind); if (!k || S.mute) return; const e = find("start", k); if (e) play(e, 0.4 * vol); },
   away(kind: string, vol = 1) { const k = kindOf(kind); if (!k || S.mute) return; const e = find("away", k); if (e) play(e, 0.4 * vol); },

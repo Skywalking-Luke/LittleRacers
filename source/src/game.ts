@@ -1,5 +1,5 @@
 import { g, D, C, R, MIN, hit, Rect, Scene, Pt, go, burst, sfx, say, box, star, txt } from "./core";
-import { btnBox, homeIcon, speakerIcon, fitPic, pic } from "./art";
+import { btnBox, homeIcon, speakerIcon, fitPic, pic, cover } from "./art";
 import { S } from "./audio";
 import { vs, kindOf } from "./vsfx";
 let homeFn: () => Scene = null as any;
@@ -68,6 +68,8 @@ class Done implements Scene {
   update(dt: number) { this.t += dt; }
   draw() {
     R(0, 0, D.W, D.H, C.bg); const s = Math.min(D.W, D.H);
+    // painted kampung backdrop (portrait or landscape by orientation) with a soft cream card behind the stars and buttons so they read on the road
+    { const bk = D.H > D.W ? "bg-done-portrait" : "bg-done"; pic(bk); if (cover(bk)) { const A = this.again, pad = s * 0.07, cy = D.H * 0.33 - s * 0.24, cx = Math.min(A.x, D.W / 2 - s * 0.4) - pad, cw = D.W - 2 * cx; g.save(); g.globalAlpha = 0.8; g.fillStyle = "#FAF6EE"; g.beginPath(); (g as any).roundRect(cx, cy, cw, A.y + A.h + pad - cy, s * 0.08); g.fill(); g.restore(); } }
     const b = Math.sin(Math.min(1, this.t * 1.5) * Math.PI) * D.U * 4;
     { const tr = this.game.id === "race" ? pic("trophy") : null; if (tr) { const k = Math.min(1, this.t * 1.2), e = 1 - Math.pow(1 - k, 3), h = s * 0.34 * (0.85 + 0.15 * e), w = h * tr.naturalWidth / tr.naturalHeight; g.save(); g.globalAlpha = e; g.drawImage(tr, D.W / 2 - w / 2, D.H * 0.33 - h * 0.6 - b * 0.5, w, h); g.restore(); } else star(D.W / 2, D.H * 0.33 - b, s * 0.16, C.yellow); }
     for (const sx of [-0.26, 0.26]) { const r = s * 0.08 * (1 + 0.06 * Math.sin(this.t * 2 + sx * 9)); if (!fitPic("star", D.W / 2 + sx * s - r * 1.15, D.H * 0.38 - r * 1.15, r * 2.3, r * 2.3)) star(D.W / 2 + sx * s, D.H * 0.38, r, sx < 0 ? C.pink : C.lav); }

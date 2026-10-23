@@ -63,7 +63,7 @@ class Hub implements Scene {
     const u = D.U; R(0, 0, D.W, D.H, C.bg);
     if (!cover("bg-hub")) backdrop("kampung", 0.94);
     txt("LITTLE RACERS", D.W / 2, this.lang.y + this.lang.h / 2, Math.min(34, (D.W - this.lang.w * 2 - u * 8) / 13), C.yellow);
-    for (const a of this.ages) { const r = a.r; pcirc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, C.k); pcirc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - u, C.white); txt(String(a.a), r.x + r.w / 2, r.y + r.h / 2 + 2, r.h * 0.5, C.red, "center", false); }
+    for (const a of this.ages) { const r = a.r; if (fitPic("badge-age-" + a.a, r.x, r.y, r.w, r.h)) continue; pcirc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, C.k); pcirc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2 - u, C.white); txt(String(a.a), r.x + r.w / 2, r.y + r.h / 2 + 2, r.h * 0.5, C.red, "center", false); }
     this.btns.forEach((b, i) => { const r = b.r, p = this.pressed === i; btnBox(r.x, r.y, r.w, r.h, b.d.col, p); g.save(); g.beginPath(); g.rect(r.x + u, r.y + u, r.w - 2 * u, r.h - 2 * u); g.clip(); if (!pic("icon-game-" + b.d.id) || !fitPic("icon-game-" + b.d.id, r.x + (p ? u : 0), r.y + (p ? u : 0) + u, r.w, r.h - 2 * u)) b.d.icon(r.x + (p ? u : 0), r.y + (p ? u : 0), r.w); g.restore(); { const o = p ? u : 0; tileFrame(r.x + o, r.y + o, r.w, r.h); } });
     const l = this.lang; btnBox(l.x, l.y, l.w, l.h, C.white); txt(S.lang === "en" ? "EN" : "BM", l.x + l.w / 2, l.y + l.h / 2, l.h * 0.32, S.lang === "en" ? C.blue : C.red);
     { const hm = this.home, wx = this.hWig > 0 ? Math.sin(D.t * 30) * u * 1.5 : 0, x = hm.x + wx; btnBox(x, hm.y, hm.w, hm.h, C.cream);
@@ -72,7 +72,8 @@ class Hub implements Scene {
       if (this.hHint > 0) { const fs = Math.max(10, Math.min(14, D.W / 32)), tw = fs * 16.5, ty = hm.y + hm.h + u * 3; box(hm.x, ty, tw, fs * 2.4, C.white, u); txt("HOLD TO GO HOME", hm.x + tw / 2, ty + fs * 1.2, fs * 0.8, C.k, "center", false); } }
     if ((window as any).LR_FAMILY) { const k = Math.max(3, u * 1.5), hx = D.W / 2 - 3.5 * k + k * 3.5 - k * 0.5, hy = this.par.y + this.par.h / 2 - 3 * k; heart(D.W / 2, hy + 2.5 * k, k * 3.2, "#E07A8A"); }
     const p = this.par; btnBox(p.x, p.y, p.w, p.h, C.grey); // lock icon + hold ring
-    R(p.x + p.w * 0.3, p.y + p.h * 0.45, p.w * 0.4, p.h * 0.32, C.k); R(p.x + p.w * 0.36, p.y + p.h * 0.22, p.w * 0.06, p.h * 0.25, C.k); R(p.x + p.w * 0.58, p.y + p.h * 0.22, p.w * 0.06, p.h * 0.25, C.k); R(p.x + p.w * 0.36, p.y + p.h * 0.2, p.w * 0.28, p.h * 0.06, C.k);
+    if (fitPic("icon-lock", p.x + p.w * 0.16, p.y + p.h * 0.14, p.w * 0.68, p.h * 0.68)) { /* painted padlock */ } else {
+    R(p.x + p.w * 0.3, p.y + p.h * 0.45, p.w * 0.4, p.h * 0.32, C.k); R(p.x + p.w * 0.36, p.y + p.h * 0.22, p.w * 0.06, p.h * 0.25, C.k); R(p.x + p.w * 0.58, p.y + p.h * 0.22, p.w * 0.06, p.h * 0.25, C.k); R(p.x + p.w * 0.36, p.y + p.h * 0.2, p.w * 0.28, p.h * 0.06, C.k); }
     if (this.holding) { g.strokeStyle = C.green; g.lineWidth = u * 2; g.beginPath(); g.arc(p.x + p.w / 2, p.y + p.h / 2, p.w * 0.62, -Math.PI / 2, -Math.PI / 2 + (this.hold / 3) * Math.PI * 2); g.stroke(); }
     const bd = this.bed; btnBox(bd.x, bd.y, bd.w, bd.h, "#2E3A59"); moon(bd.x + bd.w * 0.25, bd.y + bd.h * 0.45, bd.h * 0.26, "#F2D894");
     for (let i = 0; i < 3; i++) star(bd.x + bd.w * (0.55 + i * 0.13), bd.y + bd.h * (0.3 + (i % 2) * 0.2), bd.h * 0.08, "#FAF6EE", false);
