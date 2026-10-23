@@ -1,6 +1,6 @@
 import { g, D, C, R, MIN, hit, Pt, sfx, say, box, bubbles, burst, shuffle, ri, COLS, star, txt, rnd } from "./core";
 import * as SC from "./scenes";
-import { veh, VW, backdrop, road, garage, place, btnBox, shape, cover, pic, prop, fitPic, tmul } from "./art";
+import { veh, VW, backdrop, road, garage, place, btnBox, shape, cover, coverY, pic, prop, propFit, roadBand, tarmac, fitPic, tmul } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
 export const fitU = (k: string, w: number, h: number) => Math.max(2, Math.floor(Math.min(w / VW[k][0], h / VW[k][1])));
@@ -22,6 +22,11 @@ export class Beep extends Game {
       const cx = land ? cw * (i + 0.5) : cw * ((i % 2) + 0.5), cy = land ? top + h * 0.5 : top + ch * (Math.floor(i / 2) + 0.5);
       it.w = Math.max(MIN, cw * 0.9); it.h = Math.max(MIN, ch * 0.8); it.x = it.hx = cx; it.y = it.hy = cy;
       it.u = fitU(it.k, it.w * 0.9, it.h * 0.75);
+      // vehicles park on the street's ground (never up on the shophouse roofs): portrait = 2 rows on the road, landscape = one row on the ground line
+      const st = coverY("bg-taman", land ? 0.8 : 0.79); if (st !== undefined) {
+        if (land) { it.h = Math.max(MIN, (D.H - st) * 0.9); it.u = fitU(it.k, it.w * 0.9, Math.min(h * 0.6, (D.H - st) * 1.8)); const base = Math.min(D.H - D.U * 3, st + it.u * VW[it.k][1] * 0.35); it.y = it.hy = base - (VW[it.k][1] * it.u) / 2; }
+        else { const rh2 = (D.H - st - D.U * 3) / 2, r = Math.floor(i / 2), base = st + rh2 * (r + 1) - D.U * 2; it.h = Math.max(MIN, rh2 * 0.95); it.u = fitU(it.k, it.w * 0.9, rh2 * 0.85); it.y = it.hy = base - (VW[it.k][1] * it.u) / 2; }
+      }
     });
   }
   press(p: Pt) {
@@ -54,8 +59,10 @@ export class Wash extends Game {
   start() { this.phase = 0; this.mud = Array(24).fill(true); this.foam = 0; this.drive = 0; this.taps = 0; this.col = VCOL[this.round % VCOL.length]; this.prompt(); }
   prompt() { say(["06", "07", "08", "09"][this.phase]); }
   place() {
-    this.u = fitU("car", D.W * 0.62, D.H * 0.4); this.cx = D.W / 2; this.gy = D.H * 0.64;
+    this.u = fitU("car", D.W * 0.62, D.H * 0.4); this.cx = D.W / 2;
     const s = Math.max(MIN * 1.3, Math.min(D.W, D.H) * 0.2);
+    // car stands on the painted ground (sand line of the dusk scene), kept clear of the soap/hose buttons
+    this.gy = Math.min(coverY("bg-dusk", D.W > D.H ? 0.76 : 0.8) ?? D.H * 0.64, D.H - s - D.U * 8);
     this.soap = { x: D.W / 2 - s - D.U * 4, y: D.H - s - D.U * 4, w: s, h: s }; this.hose = { x: D.W / 2 + D.U * 4, y: D.H - s - D.U * 4, w: s, h: s };
   }
   carRect() { const w = 18 * this.u, h = 11 * this.u; return { x: this.cx - w / 2, y: this.gy - h, w, h }; }
@@ -80,7 +87,7 @@ export class Wash extends Game {
   paint() {
     { const gy = backdrop("plain", 0.66); if (!cover("bg-dusk")) { SC.rainTree(D.W * 0.12, gy, D.U * 1.1); SC.rainTree(D.W * 0.9, gy, D.U * 0.9); } } const u = this.u, r = this.carRect();
     // wash bay
-    R(r.x - 8 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x + r.w + 6 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x - 8 * u, this.gy - 19 * u, r.w + 16 * u, 2 * u, C.blue);
+    if (!pic("bg-dusk")) { R(r.x - 8 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x + r.w + 6 * u, this.gy - 18 * u, 2 * u, 18 * u, C.grey); R(r.x - 8 * u, this.gy - 19 * u, r.w + 16 * u, 2 * u, C.blue); }
     g.save(); g.translate(this.drive, 0);
     veh("car", this.cx, this.gy, u, this.col);
     this.mud.forEach((m, i) => { if (m) { const ii = i % 6, jj = Math.floor(i / 6); const mx = r.x + ((ii + 0.5) * r.w) / 6, my = r.y + ((jj + 0.5) * r.h) / 4, k = 0.8 + ((i * 37) % 10) / 25; if (pic("mud-splat")) { const mw = (r.w / 7.5) * k; g.drawImage(pic("mud-splat")!, mx - mw / 2, my - mw * 0.4, mw, mw * 0.8); return; } g.fillStyle = (ii + jj) % 2 ? "rgba(168,133,102,.92)" : "rgba(154,122,92,.92)"; g.beginPath(); g.ellipse(mx, my, (r.w / 11) * k, (r.h / 7.5) * k, (i % 5) * 0.6, 0, 7); g.fill(); g.beginPath(); g.arc(mx + (r.w / 12) * k, my - (r.h / 10), r.w / 34, 0, 7); g.fill(); } });
@@ -192,25 +199,31 @@ export class Light extends Game {
     if (this.carX >= 0.86) this.win(D.W * 0.86, D.H * 0.5, "19");
   }
   paint() {
-    const gy = backdrop("kampung", 0.55), u = D.U, rh = D.H * 0.2;
-    place("school", D.W * 0.78, gy, u * 0.8);
-    road(gy + u * 4, rh, this.carX * D.W * 2); SC.zebra(D.W * 0.66, gy + u * 4, rh, u);
-    // light
-    const lx = D.W * 0.5, lw = Math.max(40, u * 12), lh = lw * 2.6, ly = gy - lh - u * 10;
-    const tl = pic("traffic-light"); if (tl) { const th = lh * 1.45, tw = th * tl.naturalWidth / tl.naturalHeight; g.drawImage(tl, lx - tw / 2, gy + u * 4 - th, tw, th); } else { R(lx - u, ly + lh, u * 2, gy + u * 4 - ly - lh, C.k); box(lx - lw / 2, ly, lw, lh, C.k, u, C.k); }
-    const cols = [[C.red, "#8a6862"], [C.yellow, "#8f8364"], [C.green, "#5d7f7b"]];
-    const on = [2, 1, 0][this.state];
-    if (tl) { const th = lh * 1.45, tw = th * tl.naturalWidth / tl.naturalHeight, top = gy + u * 4 - th, k = ["lamp-red", "lamp-amber", "lamp-green"][on], cy = top + th * LAMPY[on], rr = tw * 0.23; const lp = pic(k); if (lp) g.drawImage(lp, lx - rr, cy - rr, rr * 2, rr * 2); }
-    else for (let i = 0; i < 3; i++) pcircS(lx, ly + lh * (0.18 + i * 0.32), lw * 0.3, i === 0 ? (on === 0 ? "#E07A6E" : "#7c6460") : i === 1 ? (on === 1 ? C.yellow : "#8a815f") : on === 2 ? "#8CD3A0" : "#5d7a6e");
-    R(D.W * 0.88, gy + u * 4, u, rh, C.white); for (let i = 0; i < 4; i++) R(D.W * 0.88 + u, gy + u * 4 + i * rh / 4, u * 3, rh / 8, i % 2 ? C.k : C.white);
-    veh("car", this.carX * D.W, gy + u * 4 + rh * 0.65, this.u, C.blue);
+    const u = D.U, land = D.W > D.H; backdrop("kampung", 0.55);
+    // everything stands on the painted verge line; the road is Sylphy's road-strip, the crossing her zebra-side
+    const hz = coverY("bg-kampung", 0.72) ?? D.H * 0.55, hud = this.back.y + this.back.h + u * 3, rh = Math.max(u * 14, D.H * (land ? 0.2 : 0.13)), rt = hz + u, vg = rt + u * 0.5;
+    const ph = Math.max(u * 30, Math.min(vg - hud, D.H * (land ? 0.5 : 0.34))), tl = pic("traffic-light-pole");
+    if (pic("road-strip")) roadBand(rt, rh); else road(rt, rh, this.carX * D.W * 2);
+    const zw = rh * 1.5; if (pic("zebra-side")) { const im = pic("zebra-side")!; g.save(); g.beginPath(); g.rect(D.W * 0.66 - zw / 2, rt, zw, rh); g.clip(); g.drawImage(im, im.naturalWidth * 0.3, 0, im.naturalWidth * 0.4, im.naturalHeight, D.W * 0.66 - zw / 2, rt, zw, rh); g.restore(); } else SC.zebra(D.W * 0.66, rt, rh, u);
+    // school beside the road, standing on the verge
+    { const sw = Math.min(D.W * (land ? 0.3 : 0.36), ph * 1.5); if (!propFit("school-kampung", D.W * (land ? 0.72 : 0.79), vg, sw, sw, { sh: true })) place("school", D.W * 0.78, vg, u * 0.8); }
+    // light: one painted pole (housing + pole + base), base on the verge; lit lamp + glow drawn on top
+    const lx = D.W * 0.5, on = [2, 1, 0][this.state];
+    if (tl) { const tw = ph * tl.naturalWidth / tl.naturalHeight; prop("traffic-light-pole", lx, vg, ph); const k = ["lamp-red", "lamp-amber", "lamp-green"][on], cy = vg - ph + ph * LAMPY[on], rr = tw * 0.27, lp = pic(k), gc = ["224,122,110", "246,200,80", "120,200,140"][on];
+      const gr = g.createRadialGradient(lx, cy, rr * 0.5, lx, cy, rr * 2.6); gr.addColorStop(0, `rgba(${gc},.55)`); gr.addColorStop(1, `rgba(${gc},0)`); g.fillStyle = gr; g.beginPath(); g.arc(lx, cy, rr * 2.6, 0, 7); g.fill();
+      if (lp) g.drawImage(lp, lx - rr, cy - rr, rr * 2, rr * 2); }
+    else { const lw = Math.max(40, u * 12), lh = lw * 2.6, ly = vg - lh - u * 10; R(lx - u, ly + lh, u * 2, vg - ly - lh, C.k); box(lx - lw / 2, ly, lw, lh, C.k, u, C.k);
+      for (let i = 0; i < 3; i++) pcircS(lx, ly + lh * (0.18 + i * 0.32), lw * 0.3, i === 0 ? (on === 0 ? "#E07A6E" : "#7c6460") : i === 1 ? (on === 1 ? C.yellow : "#8a815f") : on === 2 ? "#8CD3A0" : "#5d7a6e"); }
+    // finish line: flat chequered strip painted across the road
+    { const fx = D.W * 0.88, ck = rh / 6; for (let i = 0; i < 6; i++) for (let j = 0; j < 2; j++) R(fx + j * ck, rt + i * ck, ck, ck, (i + j) % 2 ? C.k : C.white); }
+    veh("car", this.carX * D.W, rt + rh * 0.7, this.u, C.blue);
     const pr = this.pedal, pressed = this.hold;
-    iconBtn(pr, this.state === 2 ? "#E6D9D2" : C.green, () => { const cx = pr.x + pr.w / 2 + (pressed ? u : 0), cy = pr.y + pr.h / 2 + (pressed ? u : 0); for (let i = 0; i < 3; i++) R(cx - pr.w * 0.2 + i * pr.w * 0.14, cy - pr.h * 0.2 + i * u * 0, pr.w * 0.1, pr.h * 0.4, C.white); R(cx - pr.w * 0.2, cy + pr.h * 0.2, pr.w * 0.4, u * 2, C.white); }, pressed);
+    iconBtn(pr, this.state === 2 ? "#E6D9D2" : C.green, () => { const cx = pr.x + pr.w / 2 + (pressed ? u : 0), cy = pr.y + pr.h / 2 + (pressed ? u : 0); if (fitPic("icon-play", cx - pr.w * 0.3, cy - pr.h * 0.3, pr.w * 0.6, pr.h * 0.6)) return; for (let i = 0; i < 3; i++) R(cx - pr.w * 0.2 + i * pr.w * 0.14, cy - pr.h * 0.2 + i * u * 0, pr.w * 0.1, pr.h * 0.4, C.white); R(cx - pr.w * 0.2, cy + pr.h * 0.2, pr.w * 0.4, u * 2, C.white); }, pressed);
   }
 }
 function pcircS(x: number, y: number, r: number, c: string) { g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
 
-const LAMPY = [0.19, 0.405, 0.62]; // lamp centres as a fraction of the painted traffic-light height (measured)
+const LAMPY = [0.094, 0.209, 0.32]; // lamp centres as a fraction of the painted traffic-light height (measured)
 // 6. Build My Car ---------------------------------------------------------
 export class Build extends Game {
   id = "build"; rounds = 3; stage = 0; wheels = 0; piece: Item = mkItem(); u = 4; cx = 0; gy = 0; drive = 0; goBtn: any; col = C.red;
@@ -218,7 +231,7 @@ export class Build extends Game {
   prompt() { say(this.stage === 0 ? "20" : this.stage === 1 ? (this.wheels === 0 ? "21" : "n" + (this.wheels + 1)) : this.stage === 2 ? "x_build_roof" : "22"); }
   place() {
     const land = D.W > D.H; this.u = fitU("build", D.W * (land ? 0.5 : 0.8), D.H * 0.3);
-    this.cx = land ? D.W * 0.4 : D.W / 2; this.gy = land ? D.H * 0.62 : D.H * 0.5;
+    this.cx = land ? D.W * 0.4 : D.W / 2; this.gy = coverY("bg-workshop", 0.76) ?? (land ? D.H * 0.62 : D.H * 0.5); // car stands on the painted workshop floor
     const s = Math.max(MIN * 1.3, Math.min(D.W, D.H) * 0.22);
     const p = this.piece; p.w = p.h = s; p.hx = land ? D.W - s * 0.9 : D.W / 2; p.hy = land ? D.H * 0.5 : D.H - s * 0.8; p.x = p.hx; p.y = p.hy;
     this.goBtn = { x: p.hx - s / 2, y: p.hy - s / 2, w: s, h: s };

@@ -11,7 +11,7 @@ export function moon(cx: number, cy: number, r: number, col: string) {
 }
 /** round leafy tree, optional face (the "cheering crowd of trees") */
 export function tree(x: number, gy: number, u: number, col = "#8DB07A", o: { face?: boolean; bob?: number; night?: boolean } = {}) {
-  if (!o.night && prop("tree", x, gy, 21 * u)) return;
+  if (!o.night && prop("tree", x, gy, 21 * u, { gr: true })) return;
   const b = o.bob ? Math.sin(D.t * 1.2 + o.bob) * u * 0.6 : 0, trunk = o.night ? "#5b4a3a" : "#A07F5E";
   sk(rrPts(x - u * 1.2, gy - 9 * u, u * 2.4, 9 * u, u * 0.6), trunk, lw(u));
   sk(elPts(x, gy - 13 * u + b, 7 * u, 6.5 * u, 16), col, lw(u));
@@ -20,7 +20,7 @@ export function tree(x: number, gy: number, u: number, col = "#8DB07A", o: { fac
 }
 /** rain tree: wide umbrella canopy with soft pink puffs */
 export function rainTree(x: number, gy: number, u: number) {
-  if (prop("rain-tree", x, gy, 31 * u)) return;
+  if (prop("rain-tree", x, gy, 31 * u, { gr: true })) return;
   skLine([[x, gy], [x - u, gy - 10 * u], [x + u * 0.5, gy - 20 * u]], u * 2.6); g.strokeStyle = "#A07F5E"; g.lineWidth = u * 1.6; g.beginPath(); g.moveTo(x, gy); g.lineTo(x - u, gy - 10 * u); g.lineTo(x + u * 0.5, gy - 20 * u); g.stroke();
   skLine([[x - u, gy - 12 * u], [x - 9 * u, gy - 20 * u]], u * 1.4); skLine([[x, gy - 14 * u], [x + 10 * u, gy - 21 * u]], u * 1.4);
   const pts: [number, number][] = []; for (let i = 0; i <= 20; i++) { const a = Math.PI + (i / 20) * Math.PI; pts.push([x + Math.cos(a) * 24 * u, gy - 20 * u + Math.sin(a) * 9 * u - (i % 2 ? 0 : u * 1.4)]); }
@@ -100,8 +100,8 @@ export function townMap(path: { x: number; y: number }[], clear: number, top: nu
   for (let y = top + s * 0.6; y < H - s * 0.4; y += s) for (let x = s * 0.6; x < W - s * 0.4; x += s) {
     const jx = x + (rand() - 0.5) * s * 0.4, jy = y + (rand() - 0.5) * s * 0.4, k = rand();
     if (path.some((p) => Math.hypot(p.x - jx, p.y - jy) < clear + s * 0.35)) continue;
-    if (k < 0.45) { sk(elPts(jx, jy, s * 0.22, s * 0.22, 12), k < 0.2 ? "#86AE76" : "#9BBF8A", lw(u) * 0.7); }
-    else if (k < 0.8) { const w = s * 0.42; sk(rrPts(jx - w / 2, jy - w / 2, w, w, u), [C.red, C.orange, C.lav, C.blue][Math.floor(k * 40) % 4], lw(u) * 0.7); skLine([[jx - w / 2, jy], [jx + w / 2, jy]], lw(u) * 0.5); }
+    // Sylphy's tree + little house stand on the map (planted with shadow), not code circles/squares
+    if (k < 0.16) { if (!prop(Math.floor(k * 100) % 3 ? "tree" : "palm", jx, jy + s * 0.3, s * 0.85)) sk(elPts(jx, jy, s * 0.22, s * 0.22, 12), "#9BBF8A", lw(u) * 0.7); }
   }
 }
 /** padi fields: soft green rows, a winding kampung path, tiny scarecrow-free and calm */

@@ -1,6 +1,6 @@
 import { g, D, C, R, MIN, hit, Pt, sfx, say, box, bubbles, burst, shuffle, ri, COLS, star, txt, rnd, ptri } from "./core";
 import * as SC from "./scenes";
-import { veh, VW, backdrop, road, place, btnBox, shape, garage, cover, coverY, pic, prop, fitPic, tmul } from "./art";
+import { veh, VW, backdrop, road, place, btnBox, shape, garage, cover, coverY, pic, prop, propFit, grass, shadow, roadBand, tarmac, fitPic, tmul } from "./art";
 import { Game, Item, mkItem, ease, bobY, wx, rectOf, iconBtn } from "./game";
 import { S, word } from "./audio";
 import { fitU } from "./games1";
@@ -21,7 +21,9 @@ export class Count extends Game {
     const perRow = 5, rows = Math.ceil(this.n / perRow);
     const cw = (land ? D.W * 0.62 : D.W * 0.9) / perRow, ch = Math.min(areaH / 2.4, cw * 0.75);
     this.u = fitU("car", cw * 0.92, ch * 0.9);
-    this.cars.forEach((c, i) => { const r = Math.floor(i / perRow), k = i % perRow; c.w = Math.max(MIN, cw); c.h = Math.max(MIN, ch); c.x = c.hx = (land ? D.W * 0.04 : D.W * 0.05) + cw * (k + 0.5); c.y = c.hy = top + areaH * 0.45 + r * ch * 1.1; });
+    // the queue stands on the toll plaza's painted ground line (never in the sky)
+    const glc = coverY("bg-toll", 0.7), base0 = Math.min((glc ?? top + areaH * 0.45 + ch * 0.4) + ch * 0.15, (land ? D.H : D.H - Math.max(MIN * 1.2, Math.min(D.W, D.H) * 0.19) * 1.35) - (rows - 1) * ch * 1.15 - D.U * 3);
+    this.cars.forEach((c, i) => { const r = Math.floor(i / perRow), k = i % perRow; c.w = Math.max(MIN, cw); c.h = Math.max(MIN, ch); c.x = c.hx = (land ? D.W * 0.04 : D.W * 0.05) + cw * (k + 0.5); c.y = c.hy = base0 - ch * 0.4 + r * ch * 1.15; });
     const s = Math.max(MIN * 1.2, Math.min(D.W, D.H) * 0.19);
     this.opts.forEach((o, i) => { o.w = o.h = s; if (land) { o.x = o.hx = D.W - s * 0.8; o.y = o.hy = top + (D.H - top) * (i + 0.5) / 3; } else { o.x = o.hx = D.W / 2 + (i - 1) * s * 1.25; o.y = o.hy = D.H - s * 0.75; } });
   }
@@ -151,7 +153,7 @@ export class LetterRoad extends Game {
   }
   paint() {
     const u = D.U, top = this.lanesY[0] - this.lh / 2; { const hz = Math.max(D.H * 0.12, top * 0.32); backdrop("plain", hz / D.H); if (!cover("bg-padi")) { SC.padi(hz, top, u); SC.padi(top + this.lh * 3, D.H + u, u); SC.palm(D.W * 0.04, hz + u * 2, u * 0.6); SC.palm(D.W * 0.9, hz + u * 2, u * 0.6); } }
-    R(0, top, D.W, this.lh * 3, C.road); for (let i = 1; i < 3; i++) { const y = top + this.lh * i; for (let x = -(this.scroll % (u * 20)); x < D.W; x += u * 20) R(x, y - u / 2, u * 10, u, C.white); }
+    if (!tarmac(0, top, D.W, this.lh * 3)) R(0, top, D.W, this.lh * 3, C.road); for (let i = 1; i < 3; i++) { const y = top + this.lh * i; for (let x = -(this.scroll % (u * 20)); x < D.W; x += u * 20) R(x, y - u / 2, u * 10, u, C.white); }
     // word slots + picture
     const bs = Math.min(this.lh * 0.7, (D.W * 0.5) / this.w.length), by = this.back.y + this.back.h + D.H * 0.07;
     const wx0 = D.W / 2 - (this.w.length * bs * 1.1) / 2;
@@ -186,7 +188,7 @@ export class Race extends Game {
   tick(dt: number) { this.vs.forEach((v) => { if (this.drag !== v) ease(v, dt, 5); else v.wig = 0; }); if (this.racing) { this.racing += dt; this.vs.forEach((v) => (v.hx = v.x = this.slots[v.slot].x + Math.pow(this.racing, 2) * D.W * 0.08 * (1.2 - v.rank * 0.15))); if (this.racing > 3.2) this.win(D.W / 2, D.H / 2); } }
   paint() {
     { const gy = backdrop("plain", 0.6); if (!cover("bg-race")) SC.raceCrowd(this.slots.length ? Math.min(gy, this.slots[0].y - this.slots[0].h / 2) : gy, D.U); } const u = D.U;
-    for (let i = 0; i < 3; i++) { const s = this.slots[i]; R(0, s.y - s.h / 2 + u, D.W, s.h - u * 2, C.road); R(s.x - s.w / 2, s.y + s.h / 2 - u * 3, u, u * 2, C.white); const vs = this.vs.find((v) => v.slot === i); if (!vs && !this.racing) { const want = SETS[this.round][i]; veh(want, s.x, s.y + s.h * 0.4, Math.max(2, Math.round(this.base * SCALE[want])), C.k, { ghost: true }); } }
+    for (let i = 0; i < 3; i++) { const s = this.slots[i]; if (!tarmac(0, s.y - s.h / 2 + u, D.W, s.h - u * 2)) R(0, s.y - s.h / 2 + u, D.W, s.h - u * 2, C.road); R(s.x - s.w / 2, s.y + s.h / 2 - u * 3, u, u * 2, C.white); const vs = this.vs.find((v) => v.slot === i); if (!vs && !this.racing) { const want = SETS[this.round][i]; veh(want, s.x, s.y + s.h * 0.4, Math.max(2, Math.round(this.base * SCALE[want])), C.k, { ghost: true }); } }
     prop("race-flag", D.W * 0.85 + u * 4, this.slots[0].y - this.slots[0].h / 2 + u, this.slots[0].h * 0.9);
     for (let y = 0; y < 6; y++) R(D.W * 0.85, this.slots[0].y - this.slots[0].h / 2 + y * this.slots[0].h * 0.5, u * 3, this.slots[0].h * 0.25, y % 2 ? C.white : C.k);
     for (const v of this.vs) veh(v.k, v.x + wx(v), v.y + (VW[v.k][1] * v.u) / 2, v.u, v.col);
@@ -201,8 +203,12 @@ export class Helper extends Game {
   start() { this.need = this.seq[this.round]; this.opts = shuffle(["fire", "amb", "tow"]).map((k) => mkItem({ k })); this.sent = null; this.st = 0; this.prompt(); }
   prompt() { say(HELP[this.need][0]); }
   place() {
-    const land = D.W > D.H, s = land ? Math.min(D.W / 3.6, D.H * 0.32) : Math.min(D.W / 3.3, D.H * 0.18);
-    this.opts.forEach((o, i) => { o.w = o.h = Math.max(MIN, s); o.x = o.hx = D.W / 2 + (i - 1) * s * 1.18; o.y = o.hy = D.H - s * 0.6 - D.U * 3; o.u = fitU(o.k, s * 0.85, s * 0.6); });
+    const land = D.W > D.H, hud = this.back.y + this.back.h + D.U * 2;
+    // landscape: the three buttons stack down the right edge so the scene (house, kid, road) keeps the whole ground line clear
+    const s = land ? Math.min((D.H - hud - D.U * 3) / 3.3, D.W / 6) : Math.min(D.W / 3.3, D.H * 0.18);
+    this.opts.forEach((o, i) => { o.w = o.h = Math.max(MIN, s);
+      if (land) { o.x = o.hx = D.W - s * 0.6 - D.U * 4; o.y = o.hy = hud + s * 0.55 + i * s * 1.1; } else { o.x = o.hx = D.W / 2 + (i - 1) * s * 1.18; o.y = o.hy = D.H - s * 0.6 - D.U * 3; }
+      o.u = fitU(o.k, s * 0.85, s * 0.6); });
   }
   press(p: Pt) {
     if (this.sent) return;
@@ -214,17 +220,18 @@ export class Helper extends Game {
   }
   tick(dt: number) { this.opts.forEach((o) => ease(o, dt)); if (this.sent) { this.st = Math.min(1, this.st + dt * 0.6); } }
   paint() {
-    const gy = backdrop("plain", 0.55), u = D.U; if (!cover("bg-helper")) { SC.shophouses(D.W * 0.02, D.W * 0.42, gy, u * 0.9); SC.tree(D.W * 0.9, gy, u); } const sx = D.W * 0.62, pu = Math.max(2, Math.floor(Math.min(D.W, D.H) / 70));
+    backdrop("plain", 0.55); const painted = cover("bg-helper"), land = D.W > D.H, u = D.U, gy = painted ? (coverY("bg-helper", 0.725) as number) : D.H * 0.55, gr = painted ? (coverY("bg-helper", land ? 0.85 : 0.82) as number) : D.H * 0.62; // gy = grass line (house, kid), gr = road line (trucks, broken car)
+    if (!painted) { SC.shophouses(D.W * 0.02, D.W * 0.42, gy, u * 0.9); SC.tree(D.W * 0.9, gy, u); } const sx = D.W * (land ? 0.5 : 0.62), pu = Math.max(2, Math.floor(Math.min(D.W, D.H) / 70));
     const fixed = this.sent && this.st > 0.8;
     if (this.need === "fire") { // small cartoon flame on a house, put out with water
       const hs = pic("house-small"), fs = pic("fire-small");
-      if (hs) prop("house-small", sx, gy, 26 * pu); else place("home", sx, gy, pu);
+      if (hs) prop("house-small", sx, gy, 26 * pu, { gr: true }); else place("home", sx, gy, pu);
       if (hs && fs) { if (!fixed) { const fl = 1 + Math.sin(D.t * 2.2) * 0.04; prop("fire-small", sx + 3 * pu, gy - 19 * pu, 11 * pu * fl); } }
       else if (!fixed) { const fx = sx + 6.5 * pu, fy = gy - 13 * pu; for (let i = 0; i < 4; i++) { const t = (D.t * 0.25 + i / 4) % 1; g.fillStyle = `rgba(150,146,140,${0.55 * (1 - t)})`; g.beginPath(); g.arc(fx + Math.sin(t * 5 + i) * pu * 1.5, fy - t * 12 * pu, pu * (1.6 + t * 2.4), 0, 7); g.fill(); } }
       if (this.sent && this.st > 0.6) for (let i = 0; i < 6; i++) R(sx - 6 * pu + i * 3 * pu, gy - 34 * pu + ((D.t * 50 + i * 13) % (14 * pu)), pu, pu * 2, C.blue);
       if (fixed) star(sx + 5 * pu, gy - 28 * pu, pu * 2, C.yellow);
     }
-    if (this.need === "amb" && pic("sore-knee-kid")) { prop("sore-knee-kid", sx, gy, 22 * pu); if (fixed) star(sx + 4 * pu, gy - 12 * pu, pu * 2, C.yellow); }
+    if (this.need === "amb" && pic("sore-knee-kid")) { { grass(sx, gy, 14 * pu); shadow(sx, gy, 12 * pu); prop("sore-knee-kid", sx, gy, 22 * pu); } if (fixed) star(sx + 4 * pu, gy - 12 * pu, pu * 2, C.yellow); }
     else if (this.need === "amb") { // child with a sore knee (plaster only); after check-up, a star sticker and a smile
       R(sx - 4 * pu, gy - 10 * pu, 8 * pu, 7 * pu, C.lav); R(sx - 3 * pu, gy - 3 * pu, 2 * pu, 3 * pu, "#e9c39b"); R(sx + 1 * pu, gy - 3 * pu, 2 * pu, 3 * pu, "#e9c39b"); R(sx + 1 * pu, gy - 2 * pu, 2 * pu, pu, C.white);
       R(sx - 3.5 * pu, gy - 18 * pu, 7 * pu, 7 * pu, "#e9c39b"); R(sx - 3.5 * pu, gy - 19 * pu, 7 * pu, 2 * pu, C.k); R(sx - 2 * pu, gy - 15 * pu, pu, pu, C.k); R(sx + 1 * pu, gy - 15 * pu, pu, pu, C.k);
@@ -232,11 +239,11 @@ export class Helper extends Game {
     }
     if (this.need === "tow") { // broken-down car: bonnet up, little warning triangle; then towed away
       const off = fixed ? (this.st - 0.8) * D.W : 0;
-      if (pic("broken-car")) prop("broken-car", sx + off, gy, 15 * pu); else veh("car", sx + off, gy, pu, C.blue);
+      if (pic("broken-car")) { shadow(sx + off, gr, 17 * pu); prop("broken-car", sx + off, gr, 15 * pu); } else veh("car", sx + off, gr, pu, C.blue);
       if (!fixed && !pic("broken-car")) { R(sx + 5 * pu, gy - 12 * pu, 4 * pu, pu, C.k); R(sx + 8 * pu, gy - 12 * pu, pu, 4 * pu, C.k); ptri(sx - 20 * pu, gy - 6 * pu, 6 * pu, 6 * pu, C.orange, pu); }
     }
     for (const o of this.opts) {
-      if (o === this.sent) { const tx = sx - (VW[o.k][0] * o.u) * 0.9, x = o.hx + (tx - o.hx) * this.st, y = o.hy + (gy - o.hy) * this.st; veh(o.k, x, y, o.u, o.k === "fire" ? C.red : o.k === "tow" ? C.yellow : C.white, { lights: true }); continue; }
+      if (o === this.sent) { const tx = sx - (VW[o.k][0] * o.u) * 0.9, x = o.hx + (tx - o.hx) * this.st, y = o.hy + (gr - o.hy) * this.st; veh(o.k, x, y, o.u, o.k === "fire" ? C.red : o.k === "tow" ? C.yellow : C.white, { lights: true }); continue; }
       btnBox(o.x - o.w / 2 + wx(o), o.y - o.h / 2, o.w, o.h, C.cream);
       veh(o.k, o.x + wx(o), o.y + o.h * 0.32, o.u, o.k === "fire" ? C.red : o.k === "tow" ? C.yellow : C.white);
     }
@@ -299,7 +306,13 @@ export class Kampung extends Game {
     // camera lags gently behind the car: heavy easing + low max speed, no snaps
     if (this.follow) { const t = Math.min(this.camMax, Math.max(0, c.x - D.W * 0.45)); let v = (t - this.cam) * Math.min(1, dt * 0.7); const mx = D.W * 0.18 * dt; v = Math.max(-mx, Math.min(mx, v)); this.cam += v; } }
   paint() {
-    { const gy = backdrop("kampung", 0.3);  SC.tree(D.W * 0.45, gy, D.U * 0.7, "#86AE76"); SC.tree(D.W * 0.7, gy, D.U * 0.6); } const u = D.U; g.save(); g.translate(-this.cam, 0);
+    backdrop("kampung", 0.74); const u = D.U;
+    // trees stand on the painted grass line (tree.png / palm.png planted, with shadow + grass patch), never in the sky
+    g.save(); g.translate(-this.cam, 0);
+    { const gy = coverY("bg-kampung", 0.755) ?? D.H * 0.62, ww = D.W + this.camMax, xs = [0.38, 0.64]; for (let x = D.W * 1.2; x < ww; x += D.W * 0.26) xs.push(x / D.W);
+      xs.forEach((f, i) => { if (i % 2) SC.palm(D.W * f, gy, u * 1.1); else SC.tree(D.W * f, gy, u * 1.5); }); }
+    g.restore();
+    g.save(); g.translate(-this.cam, 0);
     // dirt road connecting visited places
     g.strokeStyle = "#D9C6A5"; g.lineWidth = Math.max(MIN * 0.4, this.pu * 6); g.lineCap = "round"; g.beginPath();
     const pts = this.places.slice().sort((a, b) => (D.W > D.H ? a.x - b.x : a.y - b.y)); pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y + p.h * 0.45) : g.moveTo(p.x, p.y + p.h * 0.45))); g.stroke();

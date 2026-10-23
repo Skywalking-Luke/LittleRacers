@@ -23,8 +23,27 @@ export const pic = (k: string): HTMLImageElement | null => IMG[k] || null;
 export function cover(k: string) { const im = IMG[k]; if (!im) return false; const s = Math.max(D.W / im.naturalWidth, D.H / im.naturalHeight), w = im.naturalWidth * s, h = im.naturalHeight * s; g.drawImage(im, (D.W - w) / 2, (D.H - h) / 2, w, h); return true; }
 /** bottom-centred painted prop of height h (px) standing on gy */
 /** like prop() but never wider than maxW */
-export function propFit(k: string, cx: number, gy: number, h: number, maxW: number) { const im = IMG[k]; if (!im) return false; const a = im.naturalWidth / im.naturalHeight; return prop(k, cx, gy, Math.min(h, maxW / a)); }
-export function prop(k: string, cx: number, gy: number, h: number) { const im = IMG[k]; if (!im) return false; const w = h * im.naturalWidth / im.naturalHeight; g.drawImage(im, cx - w / 2, gy - h, w, h); return true; }
+export function propFit(k: string, cx: number, gy: number, h: number, maxW: number, o: { sh?: boolean; gr?: boolean } = {}) { const im = IMG[k]; if (!im) return false; const a = im.naturalWidth / im.naturalHeight; return prop(k, cx, gy, Math.min(h, maxW / a), o); }
+export function prop(k: string, cx: number, gy: number, h: number, o: { sh?: boolean; gr?: boolean } = {}) {
+  const im = IMG[k]; if (!im) return false; const w = h * im.naturalWidth / im.naturalHeight;
+  if (o.gr) grass(cx, gy, w); if (o.sh !== false && !NOSHADOW.has(k)) shadow(cx, gy, Math.min(w, h * 0.9) * (/tree|palm/.test(k) ? 0.6 : 1));
+  g.drawImage(im, cx - w / 2, gy - h, w, h); return true;
+}
+const NOSHADOW = new Set(["fire-small", "atuk-wave", "sore-knee-kid", "broken-car", "garage", "sign-kampung-x"]);
+/** Sylphy's soft ground shadow, centred on the ground line under a prop of base width w */
+export function shadow(cx: number, gy: number, w: number) { const im = IMG.shadow; if (!im) return; const h = (w / im.naturalWidth) * im.naturalHeight * 1.25; g.drawImage(im, cx - w / 2, gy - h * 0.5, w, h); }
+/** Sylphy's grass-patch planted under house/tree bases (bottom edge on the ground line, ~120% of the prop width) */
+export function grass(cx: number, gy: number, w: number) { const im = IMG["grass-patch"]; if (!im) return; const gw = w * 1.2, gh = gw * im.naturalHeight / im.naturalWidth; g.drawImage(im, cx - gw / 2, gy - gh * 0.8, gw, gh); }
+/** tarmac road band from Sylphy's road-strip (tiles sideways); crossing=true draws the zebra-side strip instead */
+export function roadBand(y: number, h: number, x0 = 0, x1 = D.W, k = "road-strip", off = 0) {
+  const im = IMG[k]; if (!im) return false; const tw = h * im.naturalWidth / im.naturalHeight;
+  g.save(); g.beginPath(); g.rect(x0, y, x1 - x0, h); g.clip(); for (let x = x0 - (((off % tw) + tw) % tw); x < x1; x += tw - 0.5) g.drawImage(im, x, y, tw, h); g.restore(); return true;
+}
+/** plain tarmac (the dash-free top of road-strip) tiled over any area, for multi-lane roads */
+export function tarmac(x: number, y: number, w: number, h: number) {
+  const im = IMG["road-strip"]; if (!im) return false; const sh = im.naturalHeight * 0.36, k = Math.max(0.35, D.U * 0.22), tw = im.naturalWidth * k, th = sh * k;
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); for (let yy = y; yy < y + h; yy += th - 0.5) for (let xx = x; xx < x + w; xx += tw - 0.5) g.drawImage(im, 0, 0, im.naturalWidth, sh, xx, yy, tw, th); g.restore(); return true;
+}
 /** painted asset fitted (contain) into a box, centred */
 export function fitPic(k: string, x: number, y: number, w: number, h: number, src?: CanvasImageSource) { const im = IMG[k]; if (!im) return false; const a = im.naturalWidth / im.naturalHeight, ww = Math.min(w, h * a), hh = ww / a; g.drawImage(src || im, x + (w - ww) / 2, y + (h - hh) / 2, ww, hh); return true; }
 const MUL: Record<string, HTMLCanvasElement> = {};
@@ -175,6 +194,8 @@ export function face(x: number, y: number, u: number, happy = true) { g.fillStyl
 export function place(kind: string, cx: number, gy: number, u: number) {
   { const m: Record<string, [string, number]> = { home: ["house-stilt", 24], toll: ["toll-booth", 20], petrol: ["petrol-station", 24], durian: ["fruit-stall", 20], atuk: ["house-atuk", 24] }; const q = m[kind];
     if (q && IMG[q[0]]) { if (kind === "atuk" && IMG["atuk-wave"]) { propFit(q[0], cx - 4 * u, gy, q[1] * u, 23 * u); g.save(); g.translate(cx + 11 * u, gy); g.rotate(Math.sin(D.t * 1.6) * 0.04); propFit("atuk-wave", 0, 0, 15 * u, 8 * u); g.restore(); } else propFit(q[0], cx, gy, q[1] * u, 31 * u); return; } }
+  if (kind === "school" && IMG["school-kampung"]) { propFit("school-kampung", cx, gy, 20 * u, 33 * u); return; }
+  if (kind === "pasar" && IMG["pasar-stall-red"] && IMG["pasar-stall-teal"]) { propFit("pasar-stall-red", cx - 8 * u, gy, 13.5 * u, 16.5 * u); propFit("pasar-stall-teal", cx + 8 * u, gy, 13.5 * u, 16.5 * u); return; }
   const X = (i: number) => cx + i * u, Y = (i: number) => gy - i * u, lw = Math.max(1.2, u * 0.6);
   const B = (ix: number, iy: number, w: number, h: number, c: string, r = 1) => sk(rrPts(X(ix), Y(iy), w * u, h * u, r * u), c, lw);
   const Win = (ix: number, iy: number, w: number, h: number) => { B(ix, iy, w, h, C.win, 0.6); skLine([[X(ix + w / 2), Y(iy)], [X(ix + w / 2), Y(iy - h)]], lw * 0.6); };
@@ -271,7 +292,7 @@ export function speakerIcon(x: number, y: number, s: number, on = true) {
 export { txt, star };
 
 export function palm(x: number, gy: number, u: number) {
-  if (prop("palm", x + 2 * u, gy, 32 * u)) return;
+  if (prop("palm", x + 2 * u, gy, 32 * u, { gr: true })) return;
   const sway = Math.sin(D.t * 0.6 + x) * u * 0.6, tx = x + u * 3 + sway, ty = gy - 29 * u, lw = Math.max(1.2, u * 0.6);
   g.lineCap = "round"; g.strokeStyle = C.k; g.lineWidth = u * 2.6; g.beginPath(); g.moveTo(x + u, gy); g.quadraticCurveTo(x - u * 1.5, gy - 16 * u, tx, ty); g.stroke();
   g.strokeStyle = "#B8946E"; g.lineWidth = u * 1.6; g.stroke();
