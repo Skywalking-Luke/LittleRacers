@@ -94,6 +94,7 @@ type P = { x: number; y: number; vx: number; vy: number; c: string; life: number
 const parts: P[] = [];
 const PAL = [C.yellow, C.white, C.pink, C.lav, C.yellow];
 export function burst(x: number, y: number, n = 14, stars = true) {
+  if (parts.length > 24) return; // calm: no sparkle pile-ups from fast tapping
   for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = rnd(60, 180); parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 90, c: PAL[i % PAL.length], life: rnd(1, 1.8), s: D.U * (stars && i % 4 == 0 ? 3 : 2), star: stars && i % 4 == 0 }); }
 }
 export function rain(n = 6) { for (let i = 0; i < n; i++) parts.push({ x: rnd(0, D.W), y: -10, vx: rnd(-40, 40), vy: rnd(80, 200), c: PAL[ri(0, 7)], life: 4, s: D.U * 2 }); }
@@ -117,7 +118,8 @@ export interface Scene {
 }
 export type Pt = { x: number; y: number; id: number };
 export let scene: Scene;
-export function go(s: Scene) { if (scene && scene.leave) scene.leave(); stopVoice(); vs.stopAll(); scene = s; if (s.enter) s.enter(); if (s.layout) s.layout(); }
+export const LOCK = { on: false };
+export function go(s: Scene) { if (LOCK.on && !(s as any).isRest) return; if (scene && scene.leave) scene.leave(); stopVoice(); vs.stopAll(); scene = s; if (s.enter) s.enter(); if (s.layout) s.layout(); }
 
 export function resize() {
   D.dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -130,22 +132,35 @@ export function resize() {
 }
 let active = -1;
 function pt(e: PointerEvent): Pt { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, id: e.pointerId }; }
+// calm input rules: one finger only; a second finger, a resting palm (big touch radius) or a tap on the very screen edge is ignored
+const fingers = new Set<number>(); let multi = false, lastPt: Pt | null = null;
+export const input = { last: 0, down: () => active !== -1 };
 cv.addEventListener("pointerdown", (e) => {
-  e.preventDefault(); unlock();
+  e.preventDefault(); unlock(); input.last = performance.now();
+  if (e.pointerType === "touch") { fingers.add(e.pointerId); if (fingers.size > 1) { multi = true; if (active !== -1) { const a = active; active = -1; scene.up && scene.up(lastPt || pt(e)); void a; } return; } }
+  if (multi) return;
   if (active !== -1 && active !== e.pointerId) return; // one finger at a time
-  active = e.pointerId; try { cv.setPointerCapture(e.pointerId); } catch (x) {}
-  scene.down && scene.down(pt(e));
+  const p = pt(e), M = 10;
+  if (e.pointerType === "touch" && Math.max(e.width || 0, e.height || 0) > 90) return; // palm
+  if (p.x < M || p.y < M || p.x > D.W - M || p.y > D.H - M) return; // screen edge
+  active = e.pointerId; lastPt = p; try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+  scene.down && scene.down(p);
 });
-cv.addEventListener("pointermove", (e) => { if (e.pointerId === active) { e.preventDefault(); scene.move && scene.move(pt(e)); } });
-const end = (e: PointerEvent) => { unlock(); if (e.pointerId === active) { active = -1; scene.up && scene.up(pt(e)); } };
+// Berliku-style tracing asks for every coalesced sample so fast fingers don't skip
+cv.addEventListener("pointermove", (e) => { if (e.pointerId === active && !multi) { e.preventDefault(); input.last = performance.now(); const sc: any = scene; const list = sc.coalesce && (e as any).getCoalescedEvents ? (e as any).getCoalescedEvents() : null; if (list && list.length) for (const c of list) { lastPt = pt(c); scene.move && scene.move(lastPt); } else { lastPt = pt(e); scene.move && scene.move(lastPt); } } });
+const end = (e: PointerEvent) => { unlock(); input.last = performance.now(); fingers.delete(e.pointerId); if (!fingers.size) multi = false; if (e.pointerId === active) { active = -1; scene.up && scene.up(pt(e)); } };
 cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
 document.addEventListener("contextmenu", (e) => e.preventDefault());
-document.addEventListener("gesturestart", (e) => e.preventDefault());
-document.addEventListener("dblclick", (e) => e.preventDefault());
+for (const ev of ["gesturestart", "gesturechange", "gestureend", "dblclick"]) document.addEventListener(ev, (e) => e.preventDefault());
+document.addEventListener("selectstart", (e) => { if (!(e.target as HTMLElement)?.closest?.("input,textarea")) e.preventDefault(); });
+document.addEventListener("touchmove", (e) => { if ((e as TouchEvent).touches.length > 1 || (e.target as HTMLElement) === cv) e.preventDefault(); }, { passive: false });
+document.addEventListener("touchstart", (e) => { if ((e as TouchEvent).touches.length > 1) e.preventDefault(); }, { passive: false });
+export const TICK: { fn: ((dt: number) => void) | null } = { fn: null };
 
 let last = performance.now();
 export function loop(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; D.t += dt;
+  if (TICK.fn) TICK.fn(dt);
   if (scene.update) scene.update(dt);
   stepParts(dt);
   g.setTransform(D.dpr, 0, 0, D.dpr, 0, 0);

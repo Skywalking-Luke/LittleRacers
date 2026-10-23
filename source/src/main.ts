@@ -1,3 +1,4 @@
+import { vs } from "./vsfx";
 import { moon } from "./scenes";
 import { cur } from "./core";
 import { heart, g, D, C, R, MIN, hit, Rect, Scene, Pt, go, resize, loop, sfx, say, box, txt, star, fullscreen, ptri, pcirc } from "./core";
@@ -6,9 +7,12 @@ import { pic } from "./art";
 function tileFrame(x: number, y: number, w: number, h: number) { const im = pic("tile-frame"); if (im) g.drawImage(im, x - w * 0.03, y - h * 0.03, w * 1.06, h * 1.06); }
 import { veh, place, garage, shape, btnBox, speakerIcon, backdrop, homeIcon, whenArt, cover, fitPic } from "./art";
 import { setHome, drizzle } from "./game";
-import { S, setLang, setMute, setMusic, setRain, unlock } from "./audio";
+import { S, setLang, setMute, setMusic, setRain, setReal, unlock } from "./audio";
 import { Beep, Wash, Peek, ColourPark, Light, Build } from "./games1";
 import { Bedtime } from "./bedtime";
+import { Berliku } from "./berliku";
+import { Rest, installCalm, injectRestCss, calm, REST_MINUTES } from "./calm";
+import { Diff } from "./trace";
 import { Count, Maze, ShapeGarage, LetterRoad, Race, Helper, Kampung } from "./games2";
 
 type GDef = { id: string; age: number; name: string; col: string; make: () => Scene; icon: (x: number, y: number, s: number) => void };
@@ -17,6 +21,7 @@ const GAMES: GDef[] = [
   { id: "beep", age: 2, name: "g_beep", col: C.yellow, make: () => new Beep(), icon: (x, y, s) => { veh("car", x + s / 2, y + s * 0.72, U(s, 24), C.red); txt("!", x + s * 0.82, y + s * 0.25, s * 0.2, C.white); } },
   { id: "wash", age: 2, name: "g_wash", col: C.blue, make: () => new Wash(), icon: (x, y, s) => { veh("car", x + s / 2, y + s * 0.72, U(s, 24), C.green); for (let i = 0; i < 4; i++) pcirc(x + s * (0.25 + i * 0.17), y + s * 0.25 + (i % 2) * s * 0.08, s * 0.06, C.white); } },
   { id: "peek", age: 2, name: "g_peek", col: C.green, make: () => new Peek(), icon: (x, y, s) => garage(x + s * 0.18, y + s * 0.32, s * 0.64, s * 0.5, C.lav, 0.5, U(s, 40)) },
+  { id: "berliku", age: 3, name: "g_berliku", col: C.green, make: () => new Berliku(), icon: () => { /* hub shows art/icon-game-berliku.png */ } },
   { id: "colour", age: 3, name: "g_colour", col: C.pink, make: () => new ColourPark(), icon: (x, y, s) => { const c = [C.red, C.yellow, C.blue]; for (let i = 0; i < 3; i++) R(x + s * (0.12 + i * 0.27), y + s * 0.2, s * 0.22, s * 0.6, c[i]); veh("car", x + s * 0.5, y + s * 0.7, U(s, 34), C.yellow); } },
   { id: "light", age: 3, name: "g_light", col: C.lav, make: () => new Light(), icon: (x, y, s) => { if (pic("traffic-light-pole")) { const h = s * 0.88, w = h * 0.32, cy = y + s * 0.06 + h * 0.32, r = w * 0.27; fitPic("traffic-light-pole", x + s * 0.5 - w / 2, y + s * 0.06, w, h); if (pic("lamp-green")) fitPic("lamp-green", x + s * 0.5 - r, cy - r, r * 2, r * 2); return; } box(x + s * 0.35, y + s * 0.1, s * 0.3, s * 0.78, C.k, U(s, 30), C.k); pcirc(x + s * 0.5, y + s * 0.25, s * 0.09, "#E07A6E"); pcirc(x + s * 0.5, y + s * 0.49, s * 0.09, C.yellow); pcirc(x + s * 0.5, y + s * 0.73, s * 0.09, "#8CD3A0"); } },
   { id: "build", age: 3, name: "g_build", col: C.orange, make: () => new Build(), icon: (x, y, s) => { veh("build", x + s / 2, y + s * 0.7, U(s, 28), C.blue, { body: true, wheels: 3 }); shape("circle", x + s * 0.8, y + s * 0.25, s * 0.08, C.k, U(s, 40)); } },
@@ -35,7 +40,7 @@ setInterval(() => { if (document.visibilityState === "visible") playSec++; }, 10
 
 class Hub implements Scene {
   btns: { r: Rect; d: GDef }[] = []; ages: { r: Rect; a: number }[] = []; lang: Rect; par: Rect; bed: Rect; home: Rect; hh = 0; hHold = false; hWig = 0; hHint = 0; hold = 0; holding = false; parent = false; pbtn: Record<string, Rect> = {}; pressed = -1; brk = false; t = 0;
-  enter() { if (playSec > 600 && !breakShown) { breakShown = true; this.brk = true; setTimeout(() => say("x_break"), 300); } }
+  enter() {}
   layout() {
     const land = D.W > D.H, u = D.U, s = Math.max(MIN, Math.round(Math.min(D.W, D.H) * 0.12));
     this.lang = { x: D.W - s * 1.6 - u * 3, y: u * 3, w: s * 1.6, h: s };
@@ -52,7 +57,7 @@ class Hub implements Scene {
       for (let a = 2; a <= 5; a++) { const gs = GAMES.filter((g) => g.age === a), y = top + rh * (a - 2); this.ages.push({ r: { x: u * 2, y: y + rh / 2 - bw / 2, w: bw, h: bw }, a });
         gs.forEach((d, i) => this.btns.push({ r: { x: u * 5 + bw + i * bs * 1.05, y: y + (rh - bs) / 2, w: bs, h: bs }, d })); }
     }
-    const keys = ["sound", "music", "rain", "lang", "arcade", "close"], ph = Math.max(MIN, Math.min(80, D.H * 0.095));
+    const keys = ["sound", "music", "rain", "real", "lang", "levels", "arcade", "close"], ph = Math.max(MIN, Math.min(80, D.H * 0.095));
     const two = keys.length * (ph + u * 3) + u * 40 > D.H, cols = two ? 2 : 1, rows = keys.length / cols;
     const pw = two ? Math.min(D.W * 0.42, 400) : Math.min(D.W * 0.8, 520), gap = u * 4, tot = pw * cols + gap * (cols - 1), px0 = (D.W - tot) / 2;
     const py0 = Math.max(u * 18, D.H / 2 - (rows * (ph + u * 3)) / 2);
@@ -90,7 +95,9 @@ class Hub implements Scene {
     row("sound", "SOUND & VOICE: " + (S.mute ? "OFF" : "ON"), !S.mute);
     row("music", "SOFT MUSIC: " + (S.music ? "ON" : "OFF"), S.music);
     row("rain", "GENTLE RAIN: " + (S.rain ? "ON" : "OFF"), S.rain);
+    row("real", "REAL SOUNDS: " + (S.real ? "ON" : "OFF"), S.real);
     row("lang", "LANGUAGE: " + (S.lang === "en" ? "ENGLISH" : "BAHASA MELAYU"));
+    row("levels", "RESET GAME LEVELS");
     row("arcade", "LH CARS ARCADE HOME");
     row("close", "CLOSE");
     const ny = y1 + u * 4;
@@ -101,8 +108,8 @@ class Hub implements Scene {
     if (this.brk) { this.brk = false; playSec = 0; return; }
     if (this.parent) {
       const b = this.pbtn; sfx.tap();
-      if (hit(p, b.sound)) setMute(!S.mute); else if (hit(p, b.music)) setMusic(!S.music); else if (hit(p, b.rain)) setRain(!S.rain);
-      else if (hit(p, b.lang)) { setLang(S.lang === "en" ? "bm" : "en"); say("x_lang"); } else if (hit(p, b.arcade)) { location.href = "https://lhcars.my/"; } else if (hit(p, b.close)) this.parent = false;
+      if (hit(p, b.sound)) setMute(!S.mute); else if (hit(p, b.music)) setMusic(!S.music); else if (hit(p, b.rain)) setRain(!S.rain); else if (hit(p, b.real)) setReal(!S.real);
+      else if (hit(p, b.lang)) { setLang(S.lang === "en" ? "bm" : "en"); say("x_lang"); } else if (hit(p, b.levels)) { Diff.reset(); sfx.ding(); } else if (hit(p, b.arcade)) { location.href = "https://lhcars.my/"; } else if (hit(p, b.close)) this.parent = false;
       return;
     }
     if (hit(p, this.home, 4)) { this.hHold = true; this.hh = 0; sfx.tap(); return; }
@@ -119,9 +126,9 @@ class Hub implements Scene {
 }
 const hub = new Hub();
 setHome(() => hub);
-(window as any).__lr = { go, hub, GAMES, D, veh, cur: () => cur() };
+(window as any).__lr = { vs, go, hub, GAMES, D, veh, calm, REST_MINUTES, Diff, cur: () => cur() };
 addEventListener("resize", resize);
 addEventListener("orientationchange", () => setTimeout(resize, 200));
-go(hub); resize(); whenArt(() => resize());
+go(hub); injectRestCss(); installCalm((fresh) => go(new Rest(fresh, () => go(hub)))); resize(); whenArt(() => resize());
 (document as any).fonts && (document as any).fonts.load("600 16px Fredoka").catch(() => {});
 requestAnimationFrame(loop);

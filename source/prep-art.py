@@ -35,9 +35,9 @@ RIGHT=set()
 lst={}
 for f in sorted(glob.glob("art/*.png")+glob.glob("art/*.jpg")):
   n=os.path.splitext(os.path.basename(f))[0]
-  if n in SKIP or "preview" in n.lower(): continue
+  if n in SKIP or "preview" in n.lower() or "demo" in n.lower(): continue
   im=Image.open(f).convert("RGBA"); bg=n.startswith("bg-") or f.endswith(".jpg") or n in ("bedtime-bg",)
-  if not bg and n not in ("shape-tunnel-sign",) and im.getchannel("A").getbbox(): im=im.crop(im.getchannel("A").getbbox())
+  if not bg and n not in ("shape-tunnel-sign","road-berliku-tile","road-berliku-edge","star-road","berliku-start-garage","berliku-end-house","hold-ring","hold-ring-fill","home-button","home-button-locked") and im.getchannel("A").getbbox(): im=im.crop(im.getchannel("A").getbbox())
   if n.startswith(("bedtime-","sleepy-")) and not bg and n not in RIGHT: im=im.transpose(Image.FLIP_LEFT_RIGHT)
   mx=1920 if bg else {"letter-road":2400,"letter-lane-marking":1200}.get(n,700); s=min(1,mx/max(im.size)); im=im.resize((round(im.width*s),round(im.height*s)),Image.LANCZOS)
   (im.convert("RGB") if bg else im).save(f"public/art/{n}.webp","WEBP",quality=80,method=6); lst[n]=[im.width,im.height]
@@ -51,5 +51,18 @@ json.dump(lst,open("src/artlist.json","w"))
 import shutil
 os.makedirs("public/sfx",exist_ok=True); man={}
 for f in sorted(glob.glob("audio/*.mp3")+glob.glob("audio/*.ogg")):
-  b=os.path.basename(f); shutil.copyfile(f,"public/sfx/"+b); man.setdefault(os.path.splitext(b)[0],{"files":[],"vol":1})["files"].append(b)
+  b=os.path.basename(f)
+  if b.startswith("clap-cheer"): continue  # has voices and the app never plays it: not shipped
+  shutil.copyfile(f,"public/sfx/"+b); man.setdefault(os.path.splitext(b)[0],{"files":[],"vol":1})["files"].append(b)
 json.dump(man,open("public/sfx/manifest.json","w"),indent=0)
+# real recordings (audio/real): only clips the app uses, loaded lazily behind the parent "real sounds" switch.
+# DROP = clips waiting for Luke's OK (licence relies on the uploader's own public-domain declaration): never shipped while listed here.
+DROP={"real-engine-bike-idle","real-engine-bus-run"}
+REAL_USE=["real-horn-car","real-horn-car-beepbeep","real-horn-train","real-horn-train-emu","real-horn-train-distant","real-engine-car-start","real-engine-car-idle","real-train-chug"]
+shutil.rmtree("public/sfx/real",ignore_errors=True); os.makedirs("public/sfx/real",exist_ok=True); rman={}
+for n in REAL_USE:
+  if n in DROP: continue
+  for ext in ("ogg","mp3"):
+    f="audio/real/%s.%s"%(n,ext)
+    if os.path.exists(f): shutil.copyfile(f,"public/sfx/real/%s.%s"%(n,ext)); rman.setdefault(n,{"files":[],"vol":1})["files"].append("real/%s.%s"%(n,ext))
+json.dump(rman,open("public/sfx/real-manifest.json","w"),indent=0)

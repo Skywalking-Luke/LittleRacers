@@ -5,6 +5,7 @@ export const S = {
   mute: localStorage.getItem("lrMute") === "1",
   music: localStorage.getItem("lrMusic") === "1",
   rain: localStorage.getItem("lrRain") === "1",
+  real: localStorage.getItem("lrReal") === "1", // parent switch: real recorded horns/engines (off = the calm synthesised set)
 };
 export function setLang(l: Lang) { S.lang = l; localStorage.setItem("lrLang", l); }
 export const onUnlock: (() => void)[] = [], onMute: (() => void)[] = [];
@@ -126,6 +127,8 @@ export function say(key: string, vars?: Record<string, string>, cut = true, rate
 try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } catch (e) {}
 
 export function setMusic(m: boolean) { S.music = m; localStorage.setItem("lrMusic", m ? "1" : "0"); }
+export const onReal: (() => void)[] = [];
+export function setReal(m: boolean) { S.real = m; try { localStorage.setItem("lrReal", m ? "1" : "0"); } catch (e) {} if (m) onReal.forEach((f) => f()); }
 export function setRain(m: boolean) { S.rain = m; localStorage.setItem("lrRain", m ? "1" : "0"); }
 // very quiet lullaby loop, off by default (parent corner)
 const MEL = [523, 587, 659, 784, 659, 587, 523, 440, 392, 440, 523, 587, 523, 440, 392, 392];

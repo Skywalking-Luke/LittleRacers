@@ -27,7 +27,7 @@ Goal: object permanence and vocabulary. 3 garage doors; tap one, a vehicle pops 
 ### 4. Colour Parking
 Goal: colour matching. Drag red, yellow, blue, green cars to matching spots.
 - [13] "Park the red car!" / "Jom parking kereta merah!"
-- [14] Correct: "Yes! Red goes here!" / "Yeay, betul! Merah kat sini!"
+- [14] Correct: "Yes! Red goes here!" / "Betul! Merah kat sini!"
 - [15] Hint: "Find the yellow spot." / "Cari tempat kuning, jom."
 
 ### 5. Traffic Light
@@ -47,7 +47,7 @@ Goal: part-whole thinking. Snap on body, wheels, roof, then GO.
 ### 7. Count the Cars (Toll Plaza)
 Goal: counting 1 to 10. Cars queue at a toll; tap the number.
 - [23] "How many cars at the toll?" / "Ada berapa kereta kat tol?"
-- [24] Correct: "Five cars! Hooray!" / "Lima kereta! Yeay!"
+- [24] Correct: "Five cars!" / "Lima kereta!"
 - [25] Hint: "Let's count together." / "Jom kira sama-sama."
 
 ### 8. Road Maze

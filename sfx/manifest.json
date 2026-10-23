@@ -1,4 +1,32 @@
 {
+"beep-beep-motorcycle": {
+"files": [
+"beep-beep-motorcycle.mp3",
+"beep-beep-motorcycle.ogg"
+],
+"vol": 1
+},
+"beep-beep": {
+"files": [
+"beep-beep.mp3",
+"beep-beep.ogg"
+],
+"vol": 1
+},
+"cheer-soft": {
+"files": [
+"cheer-soft.mp3",
+"cheer-soft.ogg"
+],
+"vol": 1
+},
+"clap-soft": {
+"files": [
+"clap-soft.mp3",
+"clap-soft.ogg"
+],
+"vol": 1
+},
 "engine-bus-idle": {
 "files": [
 "engine-bus-idle.mp3",
@@ -55,6 +83,13 @@
 ],
 "vol": 1
 },
+"honk-jeep": {
+"files": [
+"honk-jeep.mp3",
+"honk-jeep.ogg"
+],
+"vol": 1
+},
 "honk-lorry": {
 "files": [
 "honk-lorry.mp3",
@@ -66,6 +101,20 @@
 "files": [
 "honk-motorcycle.mp3",
 "honk-motorcycle.ogg"
+],
+"vol": 1
+},
+"honk-short-bus": {
+"files": [
+"honk-short-bus.mp3",
+"honk-short-bus.ogg"
+],
+"vol": 1
+},
+"honk-short-car": {
+"files": [
+"honk-short-car.mp3",
+"honk-short-car.ogg"
 ],
 "vol": 1
 },
@@ -108,6 +157,27 @@
 "files": [
 "horn-train.mp3",
 "horn-train.ogg"
+],
+"vol": 1
+},
+"rev-happy-bus": {
+"files": [
+"rev-happy-bus.mp3",
+"rev-happy-bus.ogg"
+],
+"vol": 1
+},
+"rev-happy-car": {
+"files": [
+"rev-happy-car.mp3",
+"rev-happy-car.ogg"
+],
+"vol": 1
+},
+"rev-happy-jeep": {
+"files": [
+"rev-happy-jeep.mp3",
+"rev-happy-jeep.ogg"
 ],
 "vol": 1
 },

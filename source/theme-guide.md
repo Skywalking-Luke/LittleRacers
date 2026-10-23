@@ -34,5 +34,9 @@ Soft, muted pastels on a warm off-white background. Avoid neon and pure saturate
 - Gentle rain option: soft drizzle, no thunder.
 
 ## Session pacing
-- Each game is 3 to 5 short rounds, then a calm "All done! Well done!" / "Dah siap! Syabas!" screen.
-- Suggest a break after about 10 minutes of play.
+- Each game is 3 to 5 short rounds, then a calm "All done!" / "Dah siap!" screen with clapping and gentle cheering (no spoken "yeay", "hooray" or "syabas").
+- Suggest a break after about 15 minutes of play.
+
+
+## Celebration rule (Luke, 2026-10-23)
+No spoken "yeay", "hooray" or "syabas" anywhere. Celebrate with the sound of clapping and cheering instead (soft, short, never shouty), played at round end and on the All-done screen.

@@ -80,8 +80,8 @@ export class Wash extends Game {
   press(p: Pt) {
     if (this.phase === 0) { this.bp = { x: p.x, y: p.y }; this.bt = D.t; this.rub(p); return; }
     const r = this.carRect();
-    if (this.phase === 1 && hit(p, this.soap)) { sfx.pop(); this.foam = Math.min(1, this.foam + 0.34); for (let i = 0; i < 6; i++) bubbles(rnd(r.x, r.x + r.w), rnd(r.y, r.y + r.h), 1); if (this.foam >= 1) { this.phase = 2; setTimeout(() => this.prompt(), 500); } }
-    else if (this.phase === 2 && hit(p, this.hose)) { sfx.splash(); this.foam = Math.max(0, this.foam - 0.34); for (let i = 0; i < 8; i++) bubbles(rnd(r.x, r.x + r.w), r.y, 1, C.blue); if (this.foam <= 0.01) { this.phase = 3; this.prompt(); burst(this.cx, r.y, 10); setTimeout(() => { this.drive = 0.01; vs.start("car"); vs.engine("car", 6); }, 1600); } }
+    if (this.phase === 1 && hit(p, this.soap)) { sfx.pop(); this.foam = Math.min(1, this.foam + 0.34); for (let i = 0; i < 3; i++) bubbles(rnd(r.x, r.x + r.w), rnd(r.y, r.y + r.h), 1); if (this.foam >= 1) { this.phase = 2; setTimeout(() => this.prompt(), 500); } }
+    else if (this.phase === 2 && hit(p, this.hose)) { sfx.splash(); this.foam = Math.max(0, this.foam - 0.34); for (let i = 0; i < 3; i++) bubbles(rnd(r.x, r.x + r.w), r.y, 1, C.blue); if (this.foam <= 0.01) { this.phase = 3; this.prompt(); burst(this.cx, r.y, 10); setTimeout(() => { this.drive = 0.01; vs.start("car"); vs.engine("car", 6); }, 1600); } }
     else if (this.phase === 1 || this.phase === 2) { const t = this.phase === 1 ? this.soap : this.hose; this.taps++; if (this.taps % 3 === 0) this.prompt(); }
   }
   bp: { x: number; y: number } | null = null; bt = -9;
@@ -252,7 +252,7 @@ export class Build extends Game {
     if (!this.drag) return; const p = this.piece, u = this.u;
     const r = { x: this.cx - 12 * u, y: this.gy - 12 * u, w: 24 * u, h: 12 * u };
     if (hit(p, r, u * 6)) {
-      sfx.pop(); burst(p.x, p.y, 6);
+      sfx.pop(); burst(p.x, p.y, 3);
       if (this.stage === 0) { this.stage = 1; }
       else if (this.stage === 1) { this.wheels++; say("n" + this.wheels); if (this.wheels === 4) { this.stage = 2; setTimeout(() => this.prompt(), 900); } }
       else if (this.stage === 2) { this.stage = 3; setTimeout(() => this.prompt(), 300); }

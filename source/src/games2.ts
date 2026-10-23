@@ -194,7 +194,7 @@ export class LetterRoad extends Game {
       w.x -= dt * 0.12; w.age = (w.age || 0) + dt;
       if (!w.hit && w.x < carX + 0.04 && w.x > carX - 0.04 && Math.round(this.carL) === w.lane) {
         w.hit = true;
-        if (w.l === this.w[this.got]) { this.got++; sfx.ding(); burst(carX * D.W, this.lanesY[w.lane], 8); say(w.l === "B" ? "31" : "x_letter_one", w.l === "B" ? undefined : { L: w.l }); w.x = -1; if (this.got >= this.w.length) { this.win(D.W / 2, D.H * 0.2, "32", undefined, 3.2); return; } }
+        if (w.l === this.w[this.got]) { this.got++; sfx.ding(); burst(carX * D.W, this.lanesY[w.lane], 3); say(w.l === "B" ? "31" : "x_letter_one", w.l === "B" ? undefined : { L: w.l }); w.x = -1; if (this.got >= this.w.length) { this.win(D.W / 2, D.H * 0.2, "32", undefined, 3.2); return; } }
         else { sfx.boop(); }
       }
     }
@@ -265,7 +265,7 @@ export class Race extends Game {
     const v = this.drag; if (!v) return;
     if (v.rank === this.filled) {
       const onLane = this.art ? v.y + (VW[v.k][1] * v.u) / 2 > this.lanesTop + this.ln[0].h * 0.5 : v.y < D.H * 0.66;
-      if (onLane || this.slots.some((s) => hit({ x: v.x, y: v.y }, rectOf(s)))) { v.slot = this.filled; const s = this.slots[this.filled++]; v.hx = s.x; if (this.art) { v.u = this.laneU(v, v.slot); v.hy = this.laneHy(v, v.slot); } else v.hy = s.y; sfx.pop(); say(["x_praise1", "x_praise3", "34"][this.filled - 1]); if (this.filled === 3) setTimeout(() => { this.racing = 0.01; say("35"); vs.start("car"); vs.engine(this.vs[0] ? this.vs[0].k : "car", 7); }, 2000); }
+      if (onLane || this.slots.some((s) => hit({ x: v.x, y: v.y }, rectOf(s)))) { v.slot = this.filled; const s = this.slots[this.filled++]; v.hx = s.x; if (this.art) { v.u = this.laneU(v, v.slot); v.hy = this.laneHy(v, v.slot); } else v.hy = s.y; sfx.pop(); (this.filled === 3 ? say("34") : vs.praise()); if (this.filled === 3) setTimeout(() => { this.racing = 0.01; say("35"); vs.start("car"); vs.engine(this.vs[0] ? this.vs[0].k : "car", 7); }, 2000); }
     }
     else this.oops(v, "x_race_hint");
   }

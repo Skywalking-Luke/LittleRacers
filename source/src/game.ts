@@ -1,12 +1,13 @@
 import { g, D, C, R, MIN, hit, Rect, Scene, Pt, go, burst, sfx, say, box, star, txt } from "./core";
 import { btnBox, homeIcon, speakerIcon, fitPic, pic, cover } from "./art";
-import { S } from "./audio";
+import { S, word } from "./audio";
 import { vs, kindOf } from "./vsfx";
+import { HoldHome } from "./calm";
 let homeFn: () => Scene = null as any;
 export function setHome(f: () => Scene) { homeFn = f; }
 export function goHome() { go(homeFn()); }
-const PRAISE = ["x_praise1", "x_praise2", "x_praise3", "x_praise4"];
-export const praise = () => PRAISE[Math.floor(Math.random() * PRAISE.length)];
+/** calm, always-the-same praise: claps (and a gentle cheer outside the family copy), never a spoken "yay" */
+export const praise = () => { vs.praise(); };
 export type Item = { x: number; y: number; hx: number; hy: number; w: number; h: number; wig: number; bob: number; [k: string]: any };
 export const mkItem = (o: any = {}): Item => Object.assign({ x: 0, y: 0, hx: 0, hy: 0, w: 0, h: 0, wig: 0, bob: 0 }, o);
 export function ease(it: Item, dt: number, k = 8) { it.x += (it.hx - it.x) * Math.min(1, dt * k); it.y += (it.hy - it.y) * Math.min(1, dt * k); it.wig = Math.max(0, it.wig - dt); it.bob = Math.max(0, it.bob - dt * 2); }
@@ -18,9 +19,9 @@ export function iconBtn(r: Rect, col: string, draw: () => void, pressed = false)
 export abstract class Game implements Scene {
   abstract id: string;
   rounds = 4; round = 0; wait = 0; t = 0; busy = false;
-  back: Rect; spk: Rect; drag: Item | null = null; offX = 0; offY = 0;
+  back: Rect; spk: Rect; hh = new HoldHome(() => goHome()); drag: Item | null = null; offX = 0; offY = 0;
   enter() { this.round = 0; this.wait = 0; this.layoutHud(); this.start(); }
-  layoutHud() { const s = Math.max(MIN, Math.round(Math.min(D.W, D.H) * 0.13)); this.back = { x: D.U * 3, y: D.U * 3, w: s, h: s }; this.spk = { x: D.W - s - D.U * 3, y: D.U * 3, w: s, h: s }; }
+  layoutHud() { const s = Math.max(MIN, Math.round(Math.min(D.W, D.H) * 0.11)), sp = Math.max(MIN, Math.round(Math.min(D.W, D.H) * 0.13)); this.back = this.hh.layout(s); this.hh.pending = false;  this.spk = { x: D.W - sp - D.U * 3, y: D.U * 3, w: sp, h: sp }; }
   layout() { this.layoutHud(); this.place(); }
   abstract start(): void;
   abstract prompt(): void;
@@ -31,41 +32,41 @@ export abstract class Game implements Scene {
   /** round complete: gentle sparkle + happy line, then next round */
   win(x: number, y: number, line?: string, vars?: any, delay = 2.6) {
     vs.stopEngine(0.6);
-    if (this.wait > 0) return; sfx.cheer(); burst(x, y);
-    say(line || praise(), vars); this.wait = delay;
+    if (this.wait > 0) return; burst(x, y, 8); praise();
+    if (line) say(line, vars); this.wait = delay;
   }
   oops(it?: Item, hint?: string, vars?: any) { sfx.boop(); if (it) it.wig = 0.6; if (hint) say(hint, vars); }
   update(dt: number) {
-    this.t += dt; this.tick(dt);
+    this.t += dt; this.hh.update(dt); this.tick(dt);
     if (this.wait > 0) { this.wait -= dt; if (this.wait <= 0) { this.round++; if (this.round >= this.rounds) go(new Done(this)); else { this.start(); this.place(); } } }
   }
   draw() { this.paint(); this.hud(); if (S.rain) drizzle(); }
   hud() {
-    iconBtn(this.back, C.cream, () => homeIcon(this.back.x + this.back.w * 0.12, this.back.y + this.back.h * 0.1, this.back.w * 0.76));
+    this.hh.draw();
     iconBtn(this.spk, C.yellow, () => speakerIcon(this.spk.x + this.spk.w * 0.12, this.spk.y + this.spk.h * 0.12, this.spk.w * 0.76));
     // progress: soft dots for rounds, not a score
     const r = Math.max(6, D.U * 2.2), gap = r * 3, x0 = D.W / 2 - ((this.rounds - 1) * gap) / 2, y = this.back.y + this.back.h / 2;
     for (let i = 0; i < this.rounds; i++) star(x0 + i * gap, y, r * 1.3, i < this.round || (i == this.round && this.wait > 0) ? C.yellow : "#ECE6DA", true);
   }
   down(p: Pt) {
-    if (hit(p, this.back, 4)) { sfx.tap(); goHome(); return; }
+    if (this.hh.press(p)) return;
     if (hit(p, this.spk, 4)) { sfx.tap(); this.prompt(); return; }
     if (this.wait > 0) return;
     this.press(p);
   }
-  move(p: Pt) { if (this.drag) { this.drag.x = p.x - this.offX; this.drag.y = p.y - this.offY; } this.drag2(p); }
-  up(p: Pt) { this.release(p); this.drag = null; }
+  move(p: Pt) { this.hh.move(p); if (this.drag) { this.drag.x = p.x - this.offX; this.drag.y = p.y - this.offY; } this.drag2(p); }
+  up(p: Pt) { this.hh.release(); this.release(p); this.drag = null; }
   grab(it: Item, p: Pt) { this.drag = it; this.offX = p.x - it.x; this.offY = p.y - it.y; sfx.pop(); const k = kindOf(String((it as any).k || "")) ? String((it as any).k) : ["shape", "maze", "colour"].includes(this.id) ? "car" : ""; if (k) vs.honk(k, 0.7); }
 }
 export function drizzle() { return; /* specks removed (Luke) */ }
 function _oldDrizzle() { g.fillStyle = "rgba(255,255,255,.55)"; const u = D.U; for (let i = 0; i < 40; i++) { const x = (i * 97.3 + D.t * 30) % D.W, y = (i * 53.1 + D.t * 140 + i * i) % D.H; g.fillRect(x, y, u / 2 + 1, u * 2); } }
 
 class Done implements Scene {
-  again: Rect; home: Rect; t = 0;
+  again: Rect; home: Rect; t = 0; hh = new HoldHome(() => goHome());
   constructor(public game: Game) {}
-  enter() { sfx.applause(); say("x_done"); burst(D.W / 2, D.H * 0.35, 20); }
-  layout() { const s = Math.max(MIN * 1.4, Math.min(D.W, D.H) * 0.22); this.again = { x: D.W / 2 - s - D.U * 4, y: D.H * 0.62, w: s, h: s }; this.home = { x: D.W / 2 + D.U * 4, y: D.H * 0.62, w: s, h: s }; }
-  update(dt: number) { this.t += dt; }
+  enter() { praise(); say("x_done"); burst(D.W / 2, D.H * 0.35, 8); }
+  layout() { const s = Math.max(MIN * 1.4, Math.min(D.W, D.H) * 0.17); this.hh.layout(Math.max(MIN, Math.round(Math.min(D.W, D.H) * 0.11))); this.hh.pending = false; this.again = { x: D.W / 2 - s / 2, y: D.H * 0.64, w: s, h: s }; this.home = this.again; }
+  update(dt: number) { this.t += dt; this.hh.update(dt); }
   draw() {
     R(0, 0, D.W, D.H, C.bg); const s = Math.min(D.W, D.H);
     // painted kampung backdrop (portrait or landscape by orientation) with a soft cream card behind the stars and buttons so they read on the road
@@ -80,11 +81,13 @@ class Done implements Scene {
       g.lineCap = "round"; g.strokeStyle = C.k; g.lineWidth = u * 2.6; g.beginPath(); g.arc(cx, cy, r, 0.5, 0.5 + Math.PI * 1.6); g.stroke(); g.strokeStyle = C.white; g.lineWidth = u * 1.6; g.stroke();
       const ex = cx + Math.cos(0.5 + Math.PI * 1.6) * r, ey = cy + Math.sin(0.5 + Math.PI * 1.6) * r; g.fillStyle = C.white; g.strokeStyle = C.k; g.lineWidth = u * 0.5; g.beginPath(); g.moveTo(ex + u * 2.4, ey); g.lineTo(ex - u * 1.6, ey - u * 2.2); g.lineTo(ex - u * 1.2, ey + u * 2.4); g.closePath(); g.fill(); g.stroke();
     });
-    iconBtn(h, C.cream, () => homeIcon(h.x + h.w * 0.12, h.y + h.h * 0.1, h.w * 0.76));
+    this.hh.draw(); { const m = word("x_done"), s2 = Math.min(D.W, D.H); txt(m, D.W / 2, D.H * 0.56, Math.min(s2 * 0.045, D.W / (m.length * 0.6)), "#4A4A48", "center", false); }
     if (S.rain) drizzle();
   }
   down(p: Pt) {
+    if (this.hh.press(p)) return;
     if (hit(p, this.again)) { sfx.tap(); go(this.game); }
-    else if (hit(p, this.home)) { sfx.tap(); goHome(); }
   }
+  move(p: Pt) { this.hh.move(p); }
+  up() { this.hh.release(); }
 }

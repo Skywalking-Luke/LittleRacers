@@ -1,0 +1,58 @@
+{
+"real-horn-car": {
+"files": [
+"real/real-horn-car.ogg",
+"real/real-horn-car.mp3"
+],
+"vol": 1
+},
+"real-horn-car-beepbeep": {
+"files": [
+"real/real-horn-car-beepbeep.ogg",
+"real/real-horn-car-beepbeep.mp3"
+],
+"vol": 1
+},
+"real-horn-train": {
+"files": [
+"real/real-horn-train.ogg",
+"real/real-horn-train.mp3"
+],
+"vol": 1
+},
+"real-horn-train-emu": {
+"files": [
+"real/real-horn-train-emu.ogg",
+"real/real-horn-train-emu.mp3"
+],
+"vol": 1
+},
+"real-horn-train-distant": {
+"files": [
+"real/real-horn-train-distant.ogg",
+"real/real-horn-train-distant.mp3"
+],
+"vol": 1
+},
+"real-engine-car-start": {
+"files": [
+"real/real-engine-car-start.ogg",
+"real/real-engine-car-start.mp3"
+],
+"vol": 1
+},
+"real-engine-car-idle": {
+"files": [
+"real/real-engine-car-idle.ogg",
+"real/real-engine-car-idle.mp3"
+],
+"vol": 1
+},
+"real-train-chug": {
+"files": [
+"real/real-train-chug.ogg",
+"real/real-train-chug.mp3"
+],
+"vol": 1
+}
+}
