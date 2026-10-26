@@ -107,6 +107,12 @@ export const V: Record<string, Line> = {
   g_berliku: { en: "Wiggly road!", bm: "Jalan Berliku!" },
   x_berliku: { en: "Drive the car along the road.", bm: "Bawa kereta ikut jalan." },
   x_berliku_hint: { en: "Try again, follow the road!", bm: "Cuba lagi, ikut jalan!" },
+  g_itik: { en: "Ducks crossing!", bm: "Itik lalu!" },
+  x_itik: { en: "Tap the ducks to help them cross.", bm: "Tekan itik, tolong dia lintas jalan." },
+  x_itik_go: { en: "All across. Bye bye, ducks!", bm: "Semua dah lintas. Bye bye, itik!" },
+  g_parking: { en: "Smart parking!", bm: "Parking pandai!" },
+  x_parking: { en: "Drag the car into the empty space.", bm: "Tarik kereta masuk petak kosong." },
+  x_parking_hint: { en: "Almost! Try again.", bm: "Alamak, sikit lagi!" },
   x_break: { en: "Great playing! Time for a little break.", bm: "Pandainya main! Jom rehat kejap." },
   // ---- Bedtime story: Goodnight, Little Jeep (bedtime-story.md) ----
   g_bed: { en: "Goodnight, Little Jeep", bm: "Selamat Malam, Jip Kecil" },
