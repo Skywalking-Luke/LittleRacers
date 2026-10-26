@@ -27,6 +27,20 @@
 ],
 "vol": 1
 },
+"cluck-soft-1": {
+"files": [
+"cluck-soft-1.mp3",
+"cluck-soft-1.ogg"
+],
+"vol": 1
+},
+"cluck-soft-2": {
+"files": [
+"cluck-soft-2.mp3",
+"cluck-soft-2.ogg"
+],
+"vol": 1
+},
 "engine-bus-idle": {
 "files": [
 "engine-bus-idle.mp3",
@@ -157,6 +171,34 @@
 "files": [
 "horn-train.mp3",
 "horn-train.ogg"
+],
+"vol": 1
+},
+"peep-soft-1": {
+"files": [
+"peep-soft-1.mp3",
+"peep-soft-1.ogg"
+],
+"vol": 1
+},
+"peep-soft-2": {
+"files": [
+"peep-soft-2.mp3",
+"peep-soft-2.ogg"
+],
+"vol": 1
+},
+"quack-soft-1": {
+"files": [
+"quack-soft-1.mp3",
+"quack-soft-1.ogg"
+],
+"vol": 1
+},
+"quack-soft-2": {
+"files": [
+"quack-soft-2.mp3",
+"quack-soft-2.ogg"
 ],
 "vol": 1
 },

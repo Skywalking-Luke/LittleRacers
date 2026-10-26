@@ -56,7 +56,7 @@ const rok = (n: string) => (S.real && ents[n] && ents[n].buf ? ents[n] : null);
 const rpi: Record<string, number> = {};
 
 interface Voice { src: AudioBufferSourceNode; g: GainNode; end: number; loop: boolean }
-let lastPraise = 0; let voices: Voice[] = [], lastHonk = 0, lastKind: Record<string, number> = {}, engine: Voice | null = null, engineKind = "";
+let lastPraise = 0, lastAnimal = 0; const animalI: Record<string, number> = {}; let voices: Voice[] = [], lastHonk = 0, lastKind: Record<string, number> = {}, engine: Voice | null = null, engineKind = "";
 const now = () => performance.now();
 function find(role: Role, k: VK): Ent | null {
   for (const kk of [k, FALL[k]]) for (const n of ROLE_NAME[role](kk)) { const e = ents[n]; if (e && e.buf) return e; if (e && e.raw) { decode(n); } }
@@ -99,6 +99,14 @@ export const vs = {
     const ok = (n: string) => (ents[n] && ents[n].buf ? n : null); // clap-soft is voice-free (both copies); cheer-soft has voices (standard copy only)
     const c = ok("clap-soft"), h = FAMILY ? null : ok("cheer-soft"); if (!c && !h) return false; lastPraise = t;
     if (c) play(ents[c], 0.4); if (h) setTimeout(() => { if (ents[h].buf) play(ents[h], 0.32); }, 250); return true;
+  },
+  /** Itik Lalu: soft quack / peep / cluck (Sylphy's, not voices, so both copies). The two variants alternate; gains from audio/README v5; muted with the sound button */
+  animal(kind: "duck" | "duckling" | "hen"): boolean {
+    const base = kind === "duck" ? "quack-soft" : kind === "duckling" ? "peep-soft" : "cluck-soft";
+    const i = (animalI[base] = ((animalI[base] ?? -1) + 1) % 2), n = base + "-" + (i + 1), e = ents[n] && ents[n].buf ? ents[n] : ents[base + "-" + (2 - i)];
+    if (!e || !e.buf) return false; if (S.mute) return true; const t = now(); if (t - lastAnimal < 180) return true; lastAnimal = t;
+    const gain = kind === "duckling" ? 0.2 : kind === "duck" ? 0.45 : e === ents["cluck-soft-1"] ? 0.55 : 0.45;
+    play(e, gain); return true;
   },
   start(kind: string, vol = 1) { const k = kindOf(kind); if (!k || S.mute) return; if ((k === "car" || k === "taxi" || k === "jeep") && rok("real-engine-car-start")) { play(ents["real-engine-car-start"], REAL_GAIN.start * vol); return; } const e = find("start", k); if (e) play(e, 0.4 * vol); },
   away(kind: string, vol = 1) { const k = kindOf(kind); if (!k || S.mute) return; const e = find("away", k); if (e) play(e, 0.4 * vol); },

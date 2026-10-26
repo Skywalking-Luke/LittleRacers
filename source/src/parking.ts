@@ -17,13 +17,12 @@ type Mode = "idle" | "drag" | "back" | "in" | "done";
 // Geometry follows PARKING-NOTES.md: one vanishing point at x = W/2; a ground point at front-line offset X is drawn at W/2 + X*k(y).
 export class Parking extends Game {
   id = "parking"; rounds = 3; coalesce = true;
-  step = 1; misses = 0; n = 2; empty = 0; mode: Mode = "idle";
+  step = 1; misses = 0; n = 2; nBase = 2; pick = 0; empty = 0; mode: Mode = "idle";
   yH = 0; yBack = 0; yFront = 0; rowY = 0; startY = 0; startX = 0; carW = 100; bayW = 100; cones: number[] = [];
   x = 0; y = 0; ox = 0; oy = 0; fx = 0; fy = 0; tilt = 0; anim = 0; bounce = 0; lastSay = -9; bg = "bg-parking";
   start() {
     this.step = Diff.step(this.id); this.misses = 0;
-    this.n = Math.round(lerp5(2, 6, this.step)); if (D.H > D.W) this.n = Math.min(4, this.n); // portrait: at most 4 parked cars
-    this.empty = 1 + Math.floor(Math.random() * Math.max(1, this.n - 1)); if (this.n === 2) this.empty = 1;
+    this.nBase = Math.round(lerp5(2, 6, this.step)); this.n = this.nBase; this.pick = Math.random();
     this.mode = "idle"; this.place(); this.x = this.startX; this.y = this.startY; this.tilt = 0; this.prompt();
   }
   prompt() { say("x_parking"); }
@@ -33,11 +32,26 @@ export class Parking extends Game {
     const sc = Math.max(W / nw, H / nh), ih = nh * sc, oy = (H - ih) / 2, Y = (f: number) => oy + f * ih;
     this.yH = Y(land ? 0.3 : 0.2); this.yBack = Y(land ? 0.64 : 0.52); this.yFront = Y(land ? 0.9 : 0.78);
     this.rowY = this.yBack + 0.72 * (this.yFront - this.yBack);
-    this.startY = Math.min(this.yH + 1.1 * (this.yFront - this.yH), H - Math.min(W, H) * 0.03);
-    this.carW = W * (land ? 0.19 : 0.21);
+    const S = Math.min(W, H), CAR_H = 0.69; // painted car: visible height / width
+    this.n = land ? this.nBase : Math.min(4, this.nBase); // portrait: at most 4 parked cars
     const mult = Math.max(lerp5(2.0, 1.25, this.step), this.step <= 2 ? 1.4 : 0); // easy steps never below 1.4x
-    const kf = land ? 1 : this.K(this.rowY); // portrait: fit the row where the cars stand; bay fronts may run a little off-screen (notes allow)
-    for (let i = 0; i < 40 && (this.n + 1) * mult * this.carW * kf > W * 0.94; i++) this.carW *= 0.96; // smaller car so the row fits
+    if (land) {
+      // start area low (~0.95 H), in front of the parked row: the player car (scaled by k) must not reach up into the row
+      this.startY = Math.min(H * 0.95, H - S * 0.02);
+      // very wide/short screens: the cover crop pushes the row down to the start area. The painted asphalt has no lines, so slide the
+      // code-drawn bays up (never above the kerb) until a player car of >=16% S fits in front without overlapping the row
+      const need = this.startY - 0.13 * S; if (this.rowY > need) { const d = Math.min(this.rowY - need, this.yBack - Y(0.53)); this.yBack -= d; this.yFront -= d; this.rowY -= d; }
+      const ks = this.K(this.startY);
+      this.carW = Math.min(W * 0.19, (this.startY - this.rowY - S * 0.01) / (CAR_H * ks));
+      for (let i = 0; i < 40 && (this.n + 1) * mult * this.carW > W * 0.94; i++) this.carW *= 0.96;
+    } else {
+      // portrait: the player car is at least 14% of the short side; fewer bays (down to 3) if the row would crowd
+      this.startY = Math.min(this.yH + 1.1 * (this.yFront - this.yH), H - S * 0.03); const ks = this.K(this.startY), kf = this.K(this.rowY);
+      this.carW = Math.max(W * 0.21, (0.14 * S) / ks);
+      while (this.n > 2 && (this.n + 1) * mult * this.carW * kf > W * 0.96) this.n--;
+      for (let i = 0; i < 40 && (this.n + 1) * mult * this.carW * kf > W * 0.96 && this.carW * 0.96 * ks >= 0.14 * S; i++) this.carW *= 0.96;
+    }
+    this.empty = this.n === 2 ? 1 : 1 + Math.floor(this.pick * (this.n - 1));
     this.bayW = mult * this.carW;
     const ex = this.bayX(this.empty), side = ex > 0 ? -1 : ex < 0 ? 1 : Math.random() < 0.5 ? -1 : 1;
     this.startX = clamp(ex + side * Math.max(this.bayW * 1.3, W * 0.25), -W * 0.36, W * 0.36);

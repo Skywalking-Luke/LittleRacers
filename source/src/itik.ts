@@ -79,7 +79,7 @@ export class Itik extends Game {
     for (const a of this.anis) { if (a.p >= 1) continue; const q = this.pos(a), k = this.K(q.y), h = this.hgt(a, q.y), cx = q.x, cy = q.y - h * 0.5;
       const half = Math.max(this.tw, MIN) / 2; if (Math.abs(p.x - cx) <= half && Math.abs(p.y - cy) <= half) { const d = Math.hypot(p.x - cx, p.y - cy); if (d < bd) { bd = d; best = a; } } }
     if (!best) return; // a tap that misses does nothing
-    best.fast = 2; best.hop = 1; best.tapped = true; this.anyTap = true; sfx.pop();
+    best.fast = 2; best.hop = 1; best.tapped = true; this.anyTap = true; if (!vs.animal(best.k)) sfx.pop();
   }
   drawAni(a: Ani) {
     const q = this.pos(a), k = this.K(q.y), h = this.hgt(a, q.y), walking = a.p < 1.4 || Math.sin(this.t) > 0;
