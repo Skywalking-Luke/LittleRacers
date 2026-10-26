@@ -35,7 +35,7 @@ RIGHT=set()
 lst={}
 for f in sorted(glob.glob("art/*.png")+glob.glob("art/*.jpg")):
   n=os.path.splitext(os.path.basename(f))[0]
-  if n in SKIP or "preview" in n.lower() or "demo" in n.lower(): continue
+  if n in SKIP or "preview" in n.lower() or "demo" in n.lower() or n.endswith("-with-house"): continue
   im=Image.open(f).convert("RGBA"); bg=n.startswith("bg-") or f.endswith(".jpg") or n in ("bedtime-bg",)
   if not bg and n not in ("shape-tunnel-sign","road-berliku-tile","road-berliku-edge","star-road","berliku-start-garage","berliku-end-house","hold-ring","hold-ring-fill","home-button","home-button-locked") and im.getchannel("A").getbbox(): im=im.crop(im.getchannel("A").getbbox())
   if n.startswith(("bedtime-","sleepy-")) and not bg and n not in RIGHT: im=im.transpose(Image.FLIP_LEFT_RIGHT)

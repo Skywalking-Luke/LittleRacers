@@ -56,7 +56,7 @@ export abstract class Game implements Scene {
   }
   move(p: Pt) { this.hh.move(p); if (this.drag) { this.drag.x = p.x - this.offX; this.drag.y = p.y - this.offY; } this.drag2(p); }
   up(p: Pt) { this.hh.release(); this.release(p); this.drag = null; }
-  grab(it: Item, p: Pt) { this.drag = it; this.offX = p.x - it.x; this.offY = p.y - it.y; sfx.pop(); const k = kindOf(String((it as any).k || "")) ? String((it as any).k) : ["shape", "maze", "colour"].includes(this.id) ? "car" : ""; if (k) vs.honk(k, 0.7); }
+  grab(it: Item, p: Pt) { this.drag = it; this.offX = p.x - it.x; this.offY = p.y - it.y; sfx.pop(); const k = kindOf(String((it as any).k || "")) ? String((it as any).k) : ["shape", "carijalan", "colour"].includes(this.id) ? "car" : ""; if (k) vs.honk(k, 0.7); }
 }
 export function drizzle() { return; /* specks removed (Luke) */ }
 function _oldDrizzle() { g.fillStyle = "rgba(255,255,255,.55)"; const u = D.U; for (let i = 0; i < 40; i++) { const x = (i * 97.3 + D.t * 30) % D.W, y = (i * 53.1 + D.t * 140 + i * i) % D.H; g.fillRect(x, y, u / 2 + 1, u * 2); } }

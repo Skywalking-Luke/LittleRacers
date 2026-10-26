@@ -15,7 +15,8 @@ import { Itik } from "./itik";
 import { Parking } from "./parking";
 import { Rest, installCalm, injectRestCss, calm, REST_MINUTES } from "./calm";
 import { Diff } from "./trace";
-import { Count, Maze, ShapeGarage, LetterRoad, Race, Helper, Kampung } from "./games2";
+import { CariJalan } from "./carijalan";
+import { Count, ShapeGarage, LetterRoad, Race, Helper, Kampung } from "./games2";
 
 type GDef = { id: string; age: number; name: string; col: string; make: () => Scene; icon: (x: number, y: number, s: number) => void };
 const U = (s: number, n: number) => Math.max(2, Math.floor(s / n));
@@ -30,7 +31,7 @@ const GAMES: GDef[] = [
   { id: "build", age: 3, name: "g_build", col: C.orange, make: () => new Build(), icon: (x, y, s) => { veh("build", x + s / 2, y + s * 0.7, U(s, 28), C.blue, { body: true, wheels: 3 }); shape("circle", x + s * 0.8, y + s * 0.25, s * 0.08, C.k, U(s, 40)); } },
   { id: "parking", age: 4, name: "g_parking", col: C.blue, make: () => new Parking(), icon: (x, y, s) => { /* TEMPORARY placeholder until icon-game-parking.png lands */ g.strokeStyle = "#fff"; g.lineWidth = s * 0.04; g.strokeRect(x + s * 0.25, y + s * 0.25, s * 0.5, s * 0.55); veh("car", x + s / 2, y + s * 0.72, s / 40, C.red); } },
   { id: "count", age: 4, name: "g_count", col: C.yellow, make: () => new Count(), icon: (x, y, s) => { txt("123", x + s / 2, y + s * 0.3, s * 0.18, C.white); veh("car", x + s * 0.3, y + s * 0.8, U(s, 44), C.red); veh("car", x + s * 0.7, y + s * 0.8, U(s, 44), C.blue); } },
-  { id: "maze", age: 4, name: "g_maze", col: C.green, make: () => new Maze(), icon: (x, y, s) => { g.strokeStyle = C.road; g.lineWidth = s * 0.12; g.beginPath(); g.moveTo(x + s * 0.15, y + s * 0.8); g.lineTo(x + s * 0.4, y + s * 0.8); g.lineTo(x + s * 0.4, y + s * 0.4); g.lineTo(x + s * 0.8, y + s * 0.4); g.stroke(); place("home", x + s * 0.78, y + s * 0.42, U(s, 70)); veh("car", x + s * 0.22, y + s * 0.84, U(s, 60), C.red); } },
+  { id: "carijalan", age: 4, name: "g_maze", col: C.green, make: () => new CariJalan(), icon: () => {} },
   { id: "shape", age: 4, name: "g_shape", col: C.blue, make: () => new ShapeGarage(), icon: (x, y, s) => { const u = U(s, 40); shape("circle", x + s * 0.25, y + s * 0.35, s * 0.1, C.red, u); shape("square", x + s * 0.5, y + s * 0.35, s * 0.1, C.yellow, u); shape("triangle", x + s * 0.75, y + s * 0.35, s * 0.1, C.green, u); veh("car", x + s / 2, y + s * 0.85, U(s, 36), C.lav); } },
   { id: "letter", age: 5, name: "g_letter", col: C.pink, make: () => new LetterRoad(), icon: (x, y, s) => { txt("ABC", x + s / 2, y + s * 0.32, s * 0.2, C.white); veh("car", x + s / 2, y + s * 0.82, U(s, 30), C.red); } },
   { id: "race", age: 5, name: "g_race", col: C.lav, make: () => new Race(), icon: (x, y, s) => { veh("moto", x + s * 0.22, y + s * 0.8, U(s, 50), C.red); veh("car", x + s * 0.5, y + s * 0.8, U(s, 44), C.yellow); veh("bus", x + s * 0.5, y + s * 0.45, U(s, 40), C.blue); } },
